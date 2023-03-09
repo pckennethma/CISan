@@ -6,7 +6,7 @@ from itertools import chain
 from multiprocessing import Pool
 from Rules import RuleContext
 from Utility import *
-from ParallelSolver import ParallelSlicingSolver
+from ParallelSolver import ParallelSlicingSolver, ParallelPSanFullSolver
 
 CONSTRAINT_SLICING = True
 MAX_BACKTRACK_THRESHOLD = 10
@@ -79,7 +79,7 @@ class KnowledgeBase:
 
     # the first return value denotes whether we obtain meaningful result
     # the second return value denotes whether the hyp holds
-    def PSanFull(self, hyp: CIStatement, prune_neg=False):
+    def PSanFullLegacy(self, hyp: CIStatement, prune_neg=False):
         # return: [int,bool] first bool variable denotes whether hyp is true (1)
         # or false (0) or non-deterministic (-1); second bool variable denotes
         # whether the solver returns unknown
@@ -100,9 +100,11 @@ class KnowledgeBase:
         
         timeout = self.compute_timeout("psan_full")
 
-        pos_solver = SolverFor("QF_UFBV")
+        # pos_solver = SolverFor("QF_UFBV")
+        pos_solver = Solver()
         pos_solver.set("timeout", timeout)
-        neg_solver = SolverFor("QF_UFBV")
+        # neg_solver = SolverFor("QF_UFBV")
+        neg_solver = Solver()
         neg_solver.set("timeout", timeout)
 
         if not self.do_track:
@@ -189,6 +191,44 @@ class KnowledgeBase:
             if pos_rlt == unsat: return 0
             if neg_rlt == unsat: return 1
         return -1
+
+    def PSanFullLegacy(self, hyp: CIStatement):
+        ci_euf = Function("ci_euf", BitVecSort(self.var_num), BitVecSort(self.var_num), BitVecSort(self.var_num), BitVecSort(2))
+
+        hyp_constraint = hyp.generate_constraint(ci_euf, self.var_num)
+        neg_hyp_constraint = hyp.get_negation().generate_constraint(ci_euf, self.var_num)
+
+        kb_constraint = KnowledgeBase.GenerateConstraints(self.facts, ci_euf, self.var_num)
+
+        rule_ctx = RuleContext(self.var_num, ci_euf)
+        
+        timeout = self.compute_timeout("psan_full")
+
+        # pos_solver = SolverFor("QF_UFBV")
+        pos_solver = Solver()
+        pos_solver.set("timeout", timeout)
+        # neg_solver = SolverFor("QF_UFBV")
+        neg_solver = Solver()
+        neg_solver.set("timeout", timeout)
+        pos_solver.add(hyp_constraint)
+        neg_solver.add(neg_hyp_constraint)
+        pos_solver.add(kb_constraint)
+        neg_solver.add(kb_constraint)
+        for rule in rule_ctx.constraints.items():
+            name, constraint = rule
+            pos_solver.add(constraint)
+            neg_solver.add(constraint)
+        pos_rlt = pos_solver.check()
+        if pos_rlt == unsat:
+            return hyp.get_negation()
+        neg_rlt = neg_solver.check()
+        if neg_rlt == unsat:
+            return hyp
+        return None
+
+    def PSanFullParallel(self, hyp: CIStatement):
+        ps = ParallelPSanFullSolver(self.var_num, self.facts, hyp, self.compute_timeout("psan_full"))
+        return ps.check_pruning()
 
     def PSanSlicingParallel(self, hyp: CIStatement):
         # return: [int] first variable denotes whether hyp is true (1)
@@ -293,9 +333,9 @@ class KnowledgeBase:
         # complete checking
         if ENABLE_PARALLEL:
             with Pool() as pool:
-                check_results = pool.map(partial(self.PSanFull), remained_hyps)
+                check_results = pool.map(partial(self.PSanFullLegacy), remained_hyps)
         else:
-            check_results = list(map(partial(self.PSanFull), remained_hyps))
+            check_results = list(map(partial(self.PSanFullLegacy), remained_hyps))
         results = {remained_hyps[idx]: result for idx, result in enumerate(check_results)}
         if len([r for r in results if results[r][0] == -2]) != 0: 
             self.Backtracking()
@@ -325,13 +365,17 @@ class KnowledgeBase:
             if psanslicing_outcome is not None:
                 print("slicing:", psanslicing_outcome, "is inferred")
                 return psanslicing_outcome
-        psanfull_result = self.PSanFull(hyp)
-        if psanfull_result == 0: 
-            print("full:", hyp.get_negation(), "is inferred")
-            return hyp.get_negation()
-        elif psanfull_result == 1: 
-            print("full:", hyp, "is inferred")
-            return hyp
+        # psanfull_result = self.PSanFullLegacy(hyp)
+        # if psanfull_result == 0: 
+        #     print("full:", hyp.get_negation(), "is inferred")
+        #     return hyp.get_negation()
+        # elif psanfull_result == 1: 
+        #     print("full:", hyp, "is inferred")
+        #     return hyp
+        psanfull_outcome = self.PSanFullParallel(hyp)
+        if psanfull_outcome is not None:
+            print("full:", psanfull_outcome, "is inferred")
+            return psanfull_outcome
         print("full:", hyp, "is not inferred")
         return None
 
@@ -400,7 +444,7 @@ class KnowledgeBase:
         if check_type == "psan_full":
             return int(max(30_000, 1000 * self.var_num * 2))
         elif check_type == "psan_slicing":
-            return int(max(20_000, 1000 * self.var_num * 1.5))
+            return int(max(20_000, 1000 * len(self.facts)))
         elif check_type == "edsan_full":
             return int(max(30_000, 1000 * self.var_num * 2))
         elif check_type == "edsan_slicing":

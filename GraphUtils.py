@@ -81,8 +81,8 @@ class OracleCI:
         self.oracle_cache = {}
         self.ci_invoke_count = 0
 
-    def oracle_ci(self, x: int, y: int, z: set[int]):
-        self.ci_invoke_count += 1
+    def oracle_ci(self, x: int, y: int, z: set[int], debug=False):
+        if not debug: self.ci_invoke_count += 1
         f_z = frozenset(z)
         x_reachable:dict = self.oracle_cache.setdefault(x, {})
         if f_z in x_reachable: x_z_reachable = x_reachable[f_z]

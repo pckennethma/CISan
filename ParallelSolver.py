@@ -7,7 +7,8 @@ class ParallelSlicingSolver:
 
     rule_set = ["symmetric_rule", "decomposition_rule", "weak_union_rule", 
                        "contraction_rule", "intersection_rule", "composition_rule",
-                       "weak_transitivity_rule", "chordality_rule"]
+                    #    "weak_transitivity_rule", 
+                       "chordality_rule"]
 
     def __init__(self, var_num: int, ci_facts: List[CIStatement], incoming_ci: CIStatement, timeout:int, max_workers=32):
         self.max_workers = max_workers
@@ -62,3 +63,42 @@ class ParallelSlicingSolver:
             solver.add(ci.generate_constraint(ci_euf, var_num))
         solver.set("timeout", timeout)
         return_dict[index] = solver.check()
+
+class ParallelPSanFullSolver:
+
+    def __init__(self, var_num: int, ci_facts: List[CIStatement], incoming_ci: CIStatement, timeout:int, max_workers=32):
+        self.max_workers = max_workers
+        self.var_num = var_num
+        self.ci_facts = ci_facts
+        self.incoming_ci = incoming_ci
+        self.timeout = timeout
+        self.manager= Manager()
+
+    def check_pruning(self):
+        self.return_dict = self.manager.dict()
+
+        p1 = Process(target=ParallelPSanFullSolver.worker, args=(self.incoming_ci, self.var_num, self.ci_facts, self.timeout, self.return_dict))
+        p2 = Process(target=ParallelPSanFullSolver.worker, args=(self.incoming_ci.get_negation(), self.var_num, self.ci_facts, self.timeout, self.return_dict))
+        p1.start()
+        p2.start()
+        p1.join()
+        p2.join()
+
+        if self.return_dict[str(self.incoming_ci)] == unsat:
+            return self.incoming_ci.get_negation()
+        if self.return_dict[str(self.incoming_ci.get_negation())] == unsat:
+            return self.incoming_ci
+        return None
+
+    @staticmethod
+    def worker(incoming_ci: CIStatement, var_num:int, ci_facts: List[CIStatement], timeout:int, return_dict):
+        solver = SolverFor("QF_UFBV")
+        ci_euf = Function("ci_euf", BitVecSort(var_num), BitVecSort(var_num), BitVecSort(var_num), BitVecSort(2))
+        rule_ctx = RuleContext(var_num, ci_euf)
+        for name, constraint in rule_ctx.constraints.items():
+            solver.add(constraint)
+        for ci in ci_facts:
+            solver.add(ci.generate_constraint(ci_euf, var_num))
+        solver.add(incoming_ci.generate_constraint(ci_euf, var_num))
+        solver.set("timeout", timeout)
+        return_dict[str(incoming_ci)] = solver.check()

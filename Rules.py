@@ -4,17 +4,17 @@ from typing import Dict
 
 class RuleContext:
 
-    invalid_ci_val = BitVecVal(3, 2)
+    INVALID = BitVecVal(3, 2)
     IND = BitVecVal(1, 2)
-    dependent_ci_val = BitVecVal(0, 2)
+    DEP = BitVecVal(0, 2)
     
     def __init__(self, var_num, ci_euf, additional_rule_enabled=True):
         self.ci_euf = ci_euf # Function("is_ind", BitVecSort(var_num*3), IntSort())
         self.var_num = var_num
 
-        self.invalid_ci_val = RuleContext.invalid_ci_val
+        self.INVALID = RuleContext.INVALID
         self.IND = RuleContext.IND
-        self.dependent_ci_val = RuleContext.dependent_ci_val
+        self.DEP = RuleContext.DEP
 
         self.constraints: Dict[str, ExprRef] = {}
 
@@ -26,7 +26,7 @@ class RuleContext:
         self.intersection_rule()
         if additional_rule_enabled:
             self.composition_rule()
-            self.weak_transitivity_rule()
+            # self.weak_transitivity_rule()
             self.chordality_rule()
     
 
@@ -57,24 +57,27 @@ class RuleContext:
         z = BitVec("initial_validity_condition_z", self.var_num)
         cond1 = ForAll(
             [x,y,z], 
-            Not(self.is_valid(x,y,z)) == (self.ci_euf(x,y,z) == self.invalid_ci_val)
+            Not(self.is_valid(x,y,z)) == (self.ci_euf(x,y,z) == self.INVALID)
         )
 
         cond2 = ForAll(
             [x,y,z], 
-            Or([self.ci_euf(x,y,z) == self.invalid_ci_val, self.ci_euf(x,y,z) == self.dependent_ci_val, self.ci_euf(x,y,z) == self.IND])
+            Or([self.ci_euf(x,y,z) == self.INVALID, self.ci_euf(x,y,z) == self.DEP, self.ci_euf(x,y,z) == self.IND])
         )
 
-        self.constraints["initial_validity_condition"] = simplify(And([cond1, cond2]))
+        cond3 = Distinct(x, y, z)
+
+        self.constraints["initial_validity_condition"] = simplify(And([cond1, cond2, cond3]))
     
     @staticmethod
     def static_initial_validity_condition(var_num, ci_euf):
         x = BitVec("initial_validity_condition_x", var_num)
         y = BitVec("initial_validity_condition_y", var_num)
         z = BitVec("initial_validity_condition_z", var_num)
-        cond1 = Not(RuleContext.static_validity_condition(x,y,z)) == (ci_euf(x,y,z) == RuleContext.invalid_ci_val)
-        cond2 = Or([ci_euf(x,y,z) == RuleContext.invalid_ci_val, ci_euf(x,y,z) == RuleContext.dependent_ci_val, ci_euf(x,y,z) == RuleContext.IND])
-        return simplify(And([cond1, cond2]))
+        cond1 = Not(RuleContext.static_validity_condition(x,y,z)) == (ci_euf(x,y,z) == RuleContext.INVALID)
+        cond2 = Or([ci_euf(x,y,z) == RuleContext.INVALID, ci_euf(x,y,z) == RuleContext.DEP, ci_euf(x,y,z) == RuleContext.IND])
+        cond3 = Distinct(x, y, z)
+        return simplify(And([cond1, cond2, cond3]))
     
     # def completeness_rule(self):
     #     x = BitVec("completeness_rule_x", self.var_num)

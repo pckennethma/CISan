@@ -58,7 +58,7 @@ def pc_skl(var_num, independence_func, enable_solver=True):
                             print("CI Query", str(CIStatement.createByXYZ(x, y, z, is_ind)))
                         else: 
                             is_ind = psan_outcome.ci
-                            # assert is_ind == independence_func(x, y, z)
+                            assert is_ind == independence_func(x, y, z, True)
                             kb.AddFact(psan_outcome)
                         if is_ind:
                             edges_to_remove.add((node_x, node_y))
@@ -66,7 +66,6 @@ def pc_skl(var_num, independence_func, enable_solver=True):
                 else:
                     for ci in ci_relation_candidate:
                         TOTAL_CI += 1
-                        
                         if independence_func(x, y, z):
                             edges_to_remove.add((node_x, node_y))
                             break
