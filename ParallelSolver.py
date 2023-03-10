@@ -3,6 +3,7 @@ from Utility import *
 from multiprocessing import Manager, Process
 from typing import List
 
+INCONSISTENT_KB = "INCONSISTENT_KB"
 class ParallelSlicingSolver:
 
     rule_set = ["symmetric_rule", "decomposition_rule", "weak_union_rule", 
@@ -84,6 +85,8 @@ class ParallelPSanFullSolver:
         p1.join()
         p2.join()
 
+        if self.return_dict[str(self.incoming_ci)] == unsat and self.return_dict[str(self.incoming_ci.get_negation())] == unsat:
+            return INCONSISTENT_KB
         if self.return_dict[str(self.incoming_ci)] == unsat:
             return self.incoming_ci.get_negation()
         if self.return_dict[str(self.incoming_ci.get_negation())] == unsat:

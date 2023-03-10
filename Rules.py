@@ -392,7 +392,7 @@ class RuleContext:
 
         return cond
 
-    def weak_transitivity_rule(self):
+    def weak_transitivity_rule(self): # optional
         x = BitVec("weak_transitivity_rule_x", self.var_num)
         y = BitVec("weak_transitivity_rule_y", self.var_num)
         z = BitVec("weak_transitivity_rule_z", self.var_num)

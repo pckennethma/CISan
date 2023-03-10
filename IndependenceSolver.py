@@ -6,12 +6,13 @@ from itertools import chain
 from multiprocessing import Pool
 from Rules import RuleContext
 from Utility import *
-from ParallelSolver import ParallelSlicingSolver, ParallelPSanFullSolver
+from ParallelSolver import ParallelSlicingSolver, ParallelPSanFullSolver, INCONSISTENT_KB
 
 CONSTRAINT_SLICING = True
 MAX_BACKTRACK_THRESHOLD = 10
 ENABLE_PARALLEL = True
 ENABLE_GRAPHOID = True
+ENABLE_MARGINAL_OMITTING = True # if true, we will omit Psan and EDsan if the pool only contains marginal statements
 # psitip.PsiOpts.setting(solver = "pyomo.glpk")
 
 class KnowledgeBase:
@@ -247,7 +248,7 @@ class KnowledgeBase:
         new_facts.append(hyp)
         return self.graphoid_consistency_checking(new_facts)
     
-    def CheckConsistency(self):
+    def CheckConsistency(self): # Todo: reimplement in accordance with the EDSan
         ci_euf = Function("ci_euf", BitVecSort(self.var_num), BitVecSort(self.var_num), BitVecSort(self.var_num), BitVecSort(2))
         kb_constraint = KnowledgeBase.GenerateConstraints(self.facts, ci_euf, self.var_num)
         solver = SolverFor("QF_UFBV")
@@ -292,7 +293,9 @@ class KnowledgeBase:
             if rlt == unsat: return False
         return True
 
-    def EDSan(self, incoming_ci: CIStatement):
+    def EDSan(self, incoming_ci: CIStatement): # Todo: implement another PC.py for EDSan
+        if ENABLE_MARGINAL_OMITTING:
+            pass # Todo: implement marginal omittings
         if ENABLE_GRAPHOID:
             assert self.Graphoid(incoming_ci) == True
         if CONSTRAINT_SLICING:
@@ -307,7 +310,7 @@ class KnowledgeBase:
             print("drop", str(dropped))
             
 
-    def BatchPSan(self, hyps: List[CIStatement]):
+    def BatchPSan(self, hyps: List[CIStatement]): # Legacy code
         confirmed_ci = []
         if ENABLE_GRAPHOID:
             for hyp in hyps:
@@ -347,7 +350,9 @@ class KnowledgeBase:
             elif status == 1: confirmed_ci.append(ci)
         return confirmed_ci
 
-    def SinglePSan(self, hyp: CIStatement):
+    def SinglePSan(self, hyp: CIStatement): # Todo: implemention of PSan
+        if ENABLE_MARGINAL_OMITTING:
+            pass # Todo: implement marginal omitting
         if ENABLE_GRAPHOID:
             graphoid_outcome = self.graphoid_pruning(hyp)
             if graphoid_outcome is not None:
@@ -373,13 +378,16 @@ class KnowledgeBase:
         #     print("full:", hyp, "is inferred")
         #     return hyp
         psanfull_outcome = self.PSanFullParallel(hyp)
+        if psanfull_outcome == INCONSISTENT_KB:
+            self.Backtracking()
+            return None
         if psanfull_outcome is not None:
             print("full:", psanfull_outcome, "is inferred")
             return psanfull_outcome
         print("full:", hyp, "is not inferred")
         return None
 
-    def RecursivePSan(self, hyps: List[CIStatement], ind_func, step_size:int=1, early_stop:bool=False) -> List[CIStatement]:
+    def RecursivePSan(self, hyps: List[CIStatement], ind_func, step_size:int=1, early_stop:bool=False) -> List[CIStatement]: # Legacy code
         if self.backtrack_count >= MAX_BACKTRACK_THRESHOLD:
             print("max backtrack count reached, fallback to CI tests")
             return []
