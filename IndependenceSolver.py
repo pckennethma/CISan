@@ -28,6 +28,15 @@ class KnowledgeBase:
     def AddFacts(self, facts: List[CIStatement]):
         self.facts += facts
 
+    # Done: Add a function to randomly flip x% of the facts, (and return the flipped facts list)
+    def Perturb(self, ratio: float):
+        perturbed_facts = []
+        select_index= random.sample(range(len(self.facts)), int(len(self.facts)*ratio))
+        for ind in select_index:
+            self.facts[ind].ci = not self.facts[ind].ci
+            perturbed_facts.append(self.facts[ind])
+        return perturbed_facts
+
     # def ConstructKB(self):
     #     converted_facts = []
     #     for ind in self.facts:
@@ -77,6 +86,27 @@ class KnowledgeBase:
                     fact.generate_constraint(ci_euf, var_num)
                 )
         return And(constraints)
+    
+    def degenerate_check(self, incoming_ci: CIStatement):
+        if any(map(lambda ci: ci.is_negation(incoming_ci), self.facts)):
+            return False
+        return True
+    
+    def marginal_ommitting(self, incoming_ci: CIStatement):
+        if incoming_ci.is_marginal():
+            if all(map(lambda x: x.is_marginal(), self.facts)):
+                return True
+        return False
+        
+    def marginal_pruning(self, incoming_ci: CIStatement):
+        if incoming_ci.is_marginal():
+            if all(map(lambda x: x.is_marginal(), self.facts)) == True:
+                if any(map(lambda ci: ci.is_negation(incoming_ci), self.facts)) == False:
+                    return incoming_ci
+                else:
+                    return incoming_ci.get_negation()
+        return None
+
 
     # the first return value denotes whether we obtain meaningful result
     # the second return value denotes whether the hyp holds
@@ -248,18 +278,35 @@ class KnowledgeBase:
         new_facts.append(hyp)
         return self.graphoid_consistency_checking(new_facts)
     
-    def CheckConsistency(self): # Todo: reimplement in accordance with the EDSan
-        ci_euf = Function("ci_euf", BitVecSort(self.var_num), BitVecSort(self.var_num), BitVecSort(self.var_num), BitVecSort(2))
-        kb_constraint = KnowledgeBase.GenerateConstraints(self.facts, ci_euf, self.var_num)
-        solver = SolverFor("QF_UFBV")
-        timeout = int(max(10_000, 1000 * self.var_num * 2))
-        solver.set("timeout", timeout)
-        solver.add(kb_constraint)
-        rule_ctx = RuleContext(self.var_num, ci_euf)
-        for rule in rule_ctx.constraints.items(): 
-            solver.add(rule[1])
-        check_rlt = solver.check()
-        return check_rlt == sat or check_rlt == unknown
+    def CheckConsistency(self): # 
+        # ci_euf = Function("ci_euf", BitVecSort(self.var_num), BitVecSort(self.var_num), BitVecSort(self.var_num), BitVecSort(2))
+        # kb_constraint = KnowledgeBase.GenerateConstraints(self.facts, ci_euf, self.var_num)
+        # solver = SolverFor("QF_UFBV")
+        # timeout = int(max(10_000, 1000 * self.var_num * 2))
+        # solver.set("timeout", timeout)
+        # solver.add(kb_constraint)
+        # rule_ctx = RuleContext(self.var_num, ci_euf)
+        # for rule in rule_ctx.constraints.items(): 
+        #     solver.add(rule[1])
+        # check_rlt = solver.check()
+        # return check_rlt == sat or check_rlt == unknown
+
+        # Done: refer to following code snippet to implement
+        # Consistent: return True; Inconsistent: return False
+        last_ci= self.facts[-1]
+        if self.degenerate_check(last_ci) == False:
+            return False
+        if ENABLE_MARGINAL_OMITTING:
+            # Done: implement marginal omittings
+            if self.marginal_omitting(last_ci):
+                return True
+        if ENABLE_GRAPHOID:
+            if self.Graphoid(last_ci) == False:
+                return False
+        if CONSTRAINT_SLICING:
+            if self.EDSanSlicing(last_ci) == False:
+                return False
+        return self.EDSanFull(last_ci)
 
     def EDSanFull(self, incoming_ci: CIStatement):
         ci_euf = Function("ci_euf", BitVecSort(self.var_num), BitVecSort(self.var_num), BitVecSort(self.var_num), BitVecSort(2))
@@ -294,8 +341,11 @@ class KnowledgeBase:
         return True
 
     def EDSan(self, incoming_ci: CIStatement): # Todo: implement another PC.py for EDSan
+        assert self.degenerate_check(incoming_ci), "There has been a degenerate case!"
         if ENABLE_MARGINAL_OMITTING:
-            pass # Todo: implement marginal omittings
+            # Done: implement marginal omittings
+            if self.marginal_ommitting(incoming_ci):
+                return None
         if ENABLE_GRAPHOID:
             assert self.Graphoid(incoming_ci) == True
         if CONSTRAINT_SLICING:
@@ -350,9 +400,14 @@ class KnowledgeBase:
             elif status == 1: confirmed_ci.append(ci)
         return confirmed_ci
 
-    def SinglePSan(self, hyp: CIStatement): # Todo: implemention of PSan
+    def SinglePSan(self, hyp: CIStatement): # Implementation of PSan
+        # Note: Assume the KB (proceeding facts set) is consistent, otherwise, this function may require revision
         if ENABLE_MARGINAL_OMITTING:
-            pass # Todo: implement marginal omitting
+            # Done: implement marginal omitting
+            marginal_output = self.marginal_pruning(hyp)
+            if marginal_output is not None:
+                print("marginal pruning:", marginal_output, "is inferred")
+                return marginal_output
         if ENABLE_GRAPHOID:
             graphoid_outcome = self.graphoid_pruning(hyp)
             if graphoid_outcome is not None:
@@ -448,10 +503,10 @@ class KnowledgeBase:
             return None
         # return source_expr.get_bayesnet().check_ic(target_term)
 
-    def compute_timeout(self, check_type:str) -> int:
+    def compute_timeout(self, check_type:str) -> int: # This version can only be used for Earthquake dataset
         if check_type == "psan_full":
             return int(max(30_000, 1000 * self.var_num * 2))
-        elif check_type == "psan_slicing":
+        elif check_type == "psan_slicing": # Todo: change coefficient and variable
             return int(max(20_000, 1000 * len(self.facts)))
         elif check_type == "edsan_full":
             return int(max(30_000, 1000 * self.var_num * 2))

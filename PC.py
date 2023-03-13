@@ -21,7 +21,7 @@ from DataUtils import read_table
 from Kendall import DPKendalTau
 from Chisq import Chisq
 
-def pc_skl(var_num, independence_func, enable_solver=True):
+def pc_skl(var_num, independence_func, enable_solver=True): # Legacy code
 
     TOTAL_CI = 0
     
@@ -76,6 +76,60 @@ def pc_skl(var_num, independence_func, enable_solver=True):
         order += 1
 
     return graph, TOTAL_CI
+
+
+def PSan_pc_skl(var_num, independence_func, enable_solver=True):
+    TOTAL_CI = 0
+
+    graph = {i: set(range(var_num)) - {i} for i in range(var_num)}
+    kb = KnowledgeBase([], var_num, False)
+
+    # Done: add pruning check
+    # Optional: optimize this for loop, and move it into the following while loop
+    for order in range(MAX_ORDER + 1):
+        edges_to_remove = set()
+        for node_x in graph:
+            neighbors = graph[node_x]
+            for node_y in neighbors:
+                if (node_y, node_x) in edges_to_remove or (node_x, node_y) in edges_to_remove:
+                    continue
+                if len(neighbors) - 1 < order:
+                    continue
+                print(node_x, node_y, edges_to_remove, graph, TOTAL_CI)
+                cond_set_list = list(combinations(neighbors - {node_y}, order))
+                ci_relation_candidate = [CIStatement.createByXYZ(
+                    node_x, node_y, set(cond_set),
+                    True) for cond_set in cond_set_list]
+                if enable_solver:
+                    for ci in ci_relation_candidate:
+                        TOTAL_CI += 1
+                        psan_outcome = kb.SinglePSan(ci)
+                        x, y, z = list(ci.x)[0], list(ci.y)[0], ci.z
+                        if psan_outcome is None:
+                            is_ind = independence_func(x, y, z)
+                            kb.AddFact(CIStatement.createByXYZ(x, y, z, is_ind))
+                            print("CI Query", str(CIStatement.createByXYZ(x, y, z, is_ind)))
+                        else:
+                            is_ind = psan_outcome.ci
+                            assert is_ind == independence_func(x, y, z, True)
+                            kb.AddFact(psan_outcome)
+                        if is_ind:
+                            edges_to_remove.add((node_x, node_y))
+                            break
+                else:
+                    for ci in ci_relation_candidate:
+                        TOTAL_CI += 1
+                        x, y, z = list(ci.x)[0], list(ci.y)[0], ci.z
+                        if independence_func(x, y, z):
+                            edges_to_remove.add((node_x, node_y))
+                            break
+        for edge in edges_to_remove:
+            node_x, node_y = edge
+            graph[node_x].remove(node_y)
+            graph[node_y].remove(node_x)
+
+    return graph, TOTAL_CI
+
 
 def run_dpkt_pc(benchmark):
     dag_path = f"/home/pmaab/ML4C/benchmarks/{benchmark}_graph.txt"

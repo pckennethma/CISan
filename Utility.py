@@ -73,6 +73,10 @@ class CIStatement:
         self.y = y
         self.z = z
         self.ci = ci
+        assert len(self.x) >0 and len(self.y) > 0, "CIStatement must have non-empty x and y" # ToM: Right?
+
+    def is_marginal(self):
+        return len(self.z) == 0
     
     def generate_constraint(self, ci_euf: FuncDeclRef, var_num: int):
         val = BitVecVal(1,2) if self.ci else BitVecVal(0,2)
@@ -88,9 +92,23 @@ class CIStatement:
     def get_negation(self):
         return CIStatement(self.x, self.y, self.z, not self.ci)
     
-    def is_isomorphic(self, ci):
-        ci:CIStatement
+    def is_isomorphic(self, ci: "CIStatement"):
+        # ci:CIStatement
         return self.x == ci.x and self.y == ci.y and self.z == ci.z
+    
+    def is_form_equal(self, ci: "CIStatement"):
+        if self.z == ci.z:
+            if self.x == ci.x and self.y == ci.y:
+                return True
+            elif self.x == ci.y and self.y == ci.x:
+                return True
+        return False
+    
+    def is_equal(self, ci: "CIStatement"):
+        return self.ci == ci.ci and self.is_form_equal(ci)
+    
+    def is_negation(self, ci: "CIStatement"):
+        return self.ci != ci.ci and self.is_form_equal(ci)
 
     def graphoid_expr(self, graphoid_variables: list):
 
