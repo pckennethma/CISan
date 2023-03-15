@@ -101,10 +101,10 @@ class KnowledgeBase:
     def marginal_pruning(self, incoming_ci: CIStatement):
         if incoming_ci.is_marginal():
             if all(map(lambda x: x.is_marginal(), self.facts)) == True:
-                if any(map(lambda ci: ci.is_negation(incoming_ci), self.facts)) == False:
-                    return incoming_ci
-                else:
+                if any(map(lambda ci: ci.is_negation(incoming_ci), self.facts)):
                     return incoming_ci.get_negation()
+                else:
+                    return "SKIP"
         return None
 
 
@@ -406,8 +406,11 @@ class KnowledgeBase:
             # Done: implement marginal omitting
             marginal_output = self.marginal_pruning(hyp)
             if marginal_output is not None:
-                print("marginal pruning:", marginal_output, "is inferred")
-                return marginal_output
+                if marginal_output == "SKIP":
+                    return None
+                else:
+                    print("marginal pruning:", marginal_output, "is inferred")
+                    return marginal_output
         if ENABLE_GRAPHOID:
             graphoid_outcome = self.graphoid_pruning(hyp)
             if graphoid_outcome is not None:

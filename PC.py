@@ -163,7 +163,8 @@ def run_oracle_pc(benchmark):
     dag_path = f"/home/pmaab/ML4C/benchmarks/{benchmark}_graph.txt"
     dag=read_dag(dag_path)
     oracle = OracleCI(dag=dag)
-    est, TOTAL_CI = pc_skl(dag.get_num_nodes(), oracle.oracle_ci, True)
+    # est, TOTAL_CI = pc_skl(dag.get_num_nodes(), oracle.oracle_ci, True)
+    est, TOTAL_CI = PSan_pc_skl(dag.get_num_nodes(), oracle.oracle_ci, True)
     return est, TOTAL_CI, oracle.ci_invoke_count
 
 if __name__ == "__main__":
