@@ -8,12 +8,29 @@ from Rules import RuleContext
 from Utility import *
 from ParallelSolver import ParallelSlicingSolver, ParallelPSanFullSolver, INCONSISTENT_KB
 
+from datetime import datetime
+FUNCTION_TIME_DICT = {}
+
 CONSTRAINT_SLICING = True
 MAX_BACKTRACK_THRESHOLD = 10
 ENABLE_PARALLEL = True
 ENABLE_GRAPHOID = True
 ENABLE_MARGINAL_OMITTING = True # if true, we will omit Psan and EDsan if the pool only contains marginal statements
 # psitip.PsiOpts.setting(solver = "pyomo.glpk")
+
+def time_statistic(func):
+    def wrapper(*args, **kwargs):
+        start_time = datetime.now()
+        result = func(*args, **kwargs)
+        end_time = datetime.now()
+        cost= end_time - start_time
+        if func.__name__ not in FUNCTION_TIME_DICT:
+            FUNCTION_TIME_DICT[func.__name__] = (cost, 1)
+        else:
+            FUNCTION_TIME_DICT[func.__name__] = (FUNCTION_TIME_DICT[func.__name__][0] + cost, FUNCTION_TIME_DICT[func.__name__][1] + 1)
+        # print("Time cost of", func.__name__, "is", end_time - start_time)
+        return result
+    return wrapper
 
 class KnowledgeBase:
     def __init__(self, global_facts: List[CIStatement], var_num:int, do_trace=True):
@@ -98,14 +115,21 @@ class KnowledgeBase:
                 return True
         return False
         
+    @time_statistic
     def marginal_pruning(self, incoming_ci: CIStatement):
         if incoming_ci.is_marginal():
             if all(map(lambda x: x.is_marginal(), self.facts)) == True:
-                if any(map(lambda ci: ci.is_negation(incoming_ci), self.facts)):
-                    return incoming_ci.get_negation()
-                else:
-                    return "SKIP"
-        return None
+                return True
+        return False
+
+        # return None
+        # if incoming_ci.is_marginal():
+        #     if all(map(lambda x: x.is_marginal(), self.facts)) == True:
+        #         if any(map(lambda ci: ci.is_negation(incoming_ci), self.facts)):
+        #             return incoming_ci.get_negation()
+        #         else:
+        #             return "SKIP"
+        # return None
 
 
     # the first return value denotes whether we obtain meaningful result
@@ -184,6 +208,7 @@ class KnowledgeBase:
     
     # the first return value denotes whether we obtain meaningful result
     # the second return value denotes whether the hyp holds
+    @time_statistic
     def PSanSlicing(self, hyp: CIStatement, prune_neg=False):
         # return: [int] first variable denotes whether hyp is true (1)
         # or false (0) or non-deterministic (-1)
@@ -257,10 +282,12 @@ class KnowledgeBase:
             return hyp
         return None
 
+    @time_statistic
     def PSanFullParallel(self, hyp: CIStatement):
         ps = ParallelPSanFullSolver(self.var_num, self.facts, hyp, self.compute_timeout("psan_full"))
         return ps.check_pruning()
 
+    @time_statistic
     def PSanSlicingParallel(self, hyp: CIStatement):
         # return: [int] first variable denotes whether hyp is true (1)
         # or false (0) or non-deterministic (-1)
@@ -278,6 +305,7 @@ class KnowledgeBase:
         new_facts.append(hyp)
         return self.graphoid_consistency_checking(new_facts)
     
+    @time_statistic
     def CheckConsistency(self): # 
         # ci_euf = Function("ci_euf", BitVecSort(self.var_num), BitVecSort(self.var_num), BitVecSort(self.var_num), BitVecSort(2))
         # kb_constraint = KnowledgeBase.GenerateConstraints(self.facts, ci_euf, self.var_num)
@@ -352,6 +380,7 @@ class KnowledgeBase:
             assert self.EDSanSlicing(incoming_ci)
         assert self.EDSanFull(incoming_ci)
     
+    @time_statistic
     def Backtracking(self):
         print("start backtracking KB")
         self.backtrack_count += 1
@@ -404,13 +433,15 @@ class KnowledgeBase:
         # Note: Assume the KB (proceeding facts set) is consistent, otherwise, this function may require revision
         if ENABLE_MARGINAL_OMITTING:
             # Done: implement marginal omitting
-            marginal_output = self.marginal_pruning(hyp)
-            if marginal_output is not None:
-                if marginal_output == "SKIP":
-                    return None
-                else:
-                    print("marginal pruning:", marginal_output, "is inferred")
-                    return marginal_output
+            if self.marginal_pruning(hyp):
+                return None
+            # if marginal_output is not None:
+            #     if marginal_output == "SKIP":
+            #         return None
+            #     else:
+            #         print("marginal pruning:", marginal_output, "is inferred")
+            #         return marginal_output
+            
         if ENABLE_GRAPHOID:
             graphoid_outcome = self.graphoid_pruning(hyp)
             if graphoid_outcome is not None:
@@ -497,6 +528,7 @@ class KnowledgeBase:
                 return False
         return True
 
+    @time_statistic
     def graphoid_pruning(self, incoming_ci: CIStatement) -> bool:
         if not self.graphoid_consistency_checking(self.facts + [incoming_ci]):
             return incoming_ci.get_negation()
