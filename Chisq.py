@@ -36,8 +36,9 @@ class Chisq:
 
         self.accuracy = [0, 0]
 
-    def chisq_ci(self, x: int, y: int, z: set[int]):
-        self.ci_invoke_count += 1
+    def chisq_ci(self, x: int, y: int, z: set[int], debug=False):
+        # self.ci_invoke_count += 1
+        if not debug: self.ci_invoke_count += 1
         rlt = self.cit(x, y, list(z)) > self.alpha
         self.independence_oracle(x, y, z, rlt)
         return rlt

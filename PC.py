@@ -8,6 +8,7 @@ from itertools import combinations
 from causallearn.graph.GraphNode import GraphNode
 from causallearn.graph.Dag import Dag
 from datetime import datetime
+import argparse
 
 MAX_ORDER = 5
 ENABLE_PREFETCHING = True
@@ -221,7 +222,7 @@ def run_chisq_pc(benchmark):
     dag=read_dag(dag_path)
     chisq = Chisq(read_table(data_path), dag=dag)
     # est, TOTAL_CI = pc_skl(dag.get_num_nodes(), chisq.chisq_ci, True)
-    est, TOTAL_CI = EDsan_pc_skl(dag.get_num_nodes(), chisq.chisq_ci, True)
+    est, TOTAL_CI = Psan_pc_skl(dag.get_num_nodes(), chisq.chisq_ci, True)
     return est, TOTAL_CI, chisq.ci_invoke_count
 
 def run_oracle_pc(benchmark):
@@ -234,11 +235,20 @@ def run_oracle_pc(benchmark):
     return est, TOTAL_CI, oracle.ci_invoke_count
 
 if __name__ == "__main__":
-    start_time = datetime.now()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--benchmarks", "-b", type=str,
+                        choices=["earthquake", "survey", "cancer", "sachs"],
+                        default="earthquake")
 
+    args = parser.parse_args()
+
+    start_time = datetime.now()
     # it seems that Z3 have some bug on asia
-    benchmarks = ["earthquake", "survey", "cancer", "sachs",]
-    benchmarks = ["cancer"]
+    # benchmarks = ["earthquake", "survey", "cancer", "sachs",]
+    # benchmarks = ["earthquake"]
+    benchmarks = [args.benchmarks]
+    print("=========================================")
+    print(f"Benchmarks: {benchmarks}")
 
     result = {
         bn: {"shd": [], "#CI Test": [], "#CI Query": [], "Eps": []} for bn in benchmarks
