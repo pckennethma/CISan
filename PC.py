@@ -87,8 +87,10 @@ def EDsan_pc_skl(var_num, independence_func, enable_solver=True):
         is_ind = independence_func(node_x, node_y, set())
         ci = CIStatement.createByXYZ(node_x, node_y, set(), is_ind)
         kb.EDSan(ci)
+        kb.AddFact(ci)
         if is_ind:
-            edges_to_remove.add((node_x, node_y))
+            graph[node_x].remove(node_y)
+            graph[node_y].remove(node_x)
     order = 1
     while order <= MAX_ORDER:
         edges_to_remove = set()
@@ -226,7 +228,8 @@ def run_oracle_pc(benchmark):
     dag=read_dag(dag_path)
     oracle = OracleCI(dag=dag)
     # est, TOTAL_CI = pc_skl(dag.get_num_nodes(), oracle.oracle_ci, True)
-    est, TOTAL_CI = Psan_pc_skl(dag.get_num_nodes(), oracle.oracle_ci, True)
+    # est, TOTAL_CI = Psan_pc_skl(dag.get_num_nodes(), oracle.oracle_ci, True)
+    est, TOTAL_CI = EDsan_pc_skl(dag.get_num_nodes(), oracle.oracle_ci, True)
     return est, TOTAL_CI, oracle.ci_invoke_count
 
 if __name__ == "__main__":

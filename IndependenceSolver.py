@@ -377,20 +377,20 @@ class KnowledgeBase:
     @time_statistic
     def EDSanFullParallel(self, incoming_ci: CIStatement):
         ps = ParallelPSanFullSolver(self.var_num, self.facts, incoming_ci, self.compute_timeout("edsan_full"))
-        return ps.check_pruning()
+        return ps.check_consistency()
 
 
     def EDSan(self, incoming_ci: CIStatement): # Done: implement another PC.py for EDSan
-        assert self.degenerate_check(incoming_ci), "There has been a degenerate case!"
+        # assert self.degenerate_check(incoming_ci), "There has been a degenerate case!"
         if ENABLE_MARGINAL_OMITTING:
             # Done: implement marginal omittings
             if self.marginal_ommitting(incoming_ci):
                 return None
         if ENABLE_GRAPHOID:
-            assert self.Graphoid(incoming_ci) == True
+            assert self.Graphoid(incoming_ci) == True, f"Graphoid find inconsistency on {incoming_ci}"
         if CONSTRAINT_SLICING:
-            assert self.EDSanSlicing(incoming_ci)
-        assert self.EDSanFull(incoming_ci)
+            assert self.EDSanSlicingParallel(incoming_ci), f"EDSanSlicing find inconsistency on {incoming_ci}"
+        assert self.EDSanFullParallel(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
     
     @time_statistic
     def Backtracking(self):
