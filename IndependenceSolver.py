@@ -385,7 +385,7 @@ class KnowledgeBase:
         if ENABLE_MARGINAL_OMITTING:
             # Done: implement marginal omittings
             if self.marginal_ommitting(incoming_ci):
-                return None
+                return
         if ENABLE_GRAPHOID:
             assert self.Graphoid(incoming_ci) == True, f"Graphoid find inconsistency on {incoming_ci}"
         if CONSTRAINT_SLICING:

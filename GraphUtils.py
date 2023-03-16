@@ -88,3 +88,32 @@ class OracleCI:
         if f_z in x_reachable: x_z_reachable = x_reachable[f_z]
         else: x_z_reachable:set = frozenset(reachable(x, z, self.dag))
         return y not in x_z_reachable
+
+class ErrorInjectionOracleCI:
+    def __init__(self, dag:Dag=None, error_rate:float=0.1):
+        self.dag = dag
+        self.oracle_cache = {}
+        self.error_rate = error_rate
+
+        # temporary solution
+        if len(self.dag.get_nodes()) == 5: 
+            total_ci = 50
+        elif len(self.dag.get_nodes()) == 6: 
+            total_ci = 100
+        else:
+            total_ci = 1100
+        self.error_num = min(1, error_rate * total_ci)
+        self.error_injection_position = np.random.choice(range(total_ci), self.error_num, replace=False).tolist()
+        self.ci_invoke_count = 0
+
+    def oracle_ci(self, x: int, y: int, z: set[int], debug=False):
+        if not debug: self.ci_invoke_count += 1
+        f_z = frozenset(z)
+        x_reachable:dict = self.oracle_cache.setdefault(x, {})
+        if f_z in x_reachable: x_z_reachable = x_reachable[f_z]
+        else: x_z_reachable:set = frozenset(reachable(x, z, self.dag))
+        is_ind = y not in x_z_reachable
+        if self.ci_invoke_count in self.error_injection_position:
+            print("Error injection: ", x, y, z, is_ind)
+            is_ind = not is_ind
+        return is_ind
