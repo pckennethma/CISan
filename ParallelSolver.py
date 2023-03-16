@@ -52,6 +52,18 @@ class ParallelSlicingSolver:
                     print("Pruning by rule:", ParallelSlicingSolver.rule_set[-key-1])
                     return self.incoming_ci
         return None
+    
+    def check_consistency(self, ):
+        self.return_dict = self.manager.dict()
+        jobs: List[Process] = []
+        for idx, rule_name in enumerate(ParallelSlicingSolver.rule_set):
+            p1 = Process(target=ParallelSlicingSolver.worker, args=(idx+1, rule_name, self.var_num, self.ci_facts + [self.incoming_ci], self.timeout, self.return_dict))
+            jobs.append(p1)
+            p1.start()
+        for proc in jobs:
+            proc.join()
+
+        return not any(map(lambda x: x == unsat, self.return_dict.values()))
 
     @staticmethod
     def worker(index:int ,rule_name: str, var_num:int, ci_facts: List[CIStatement], timeout:int, return_dict):
@@ -92,6 +104,13 @@ class ParallelPSanFullSolver:
         if self.return_dict[str(self.incoming_ci.get_negation())] == unsat:
             return self.incoming_ci
         return None
+    
+    def check_consistency(self):
+        self.return_dict = self.manager.dict()
+        p = Process(target=ParallelPSanFullSolver.worker, args=(self.incoming_ci, self.var_num, self.ci_facts, self.timeout, self.return_dict))
+        p.start()
+        p.join()
+        return self.return_dict[str(self.incoming_ci)] != unsat
 
     @staticmethod
     def worker(incoming_ci: CIStatement, var_num:int, ci_facts: List[CIStatement], timeout:int, return_dict):

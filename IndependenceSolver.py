@@ -109,6 +109,7 @@ class KnowledgeBase:
             return False
         return True
     
+    @time_statistic
     def marginal_ommitting(self, incoming_ci: CIStatement):
         if incoming_ci.is_marginal():
             if all(map(lambda x: x.is_marginal(), self.facts)):
@@ -208,8 +209,7 @@ class KnowledgeBase:
     
     # the first return value denotes whether we obtain meaningful result
     # the second return value denotes whether the hyp holds
-    @time_statistic
-    def PSanSlicing(self, hyp: CIStatement, prune_neg=False):
+    def PSanSlicing(self, hyp: CIStatement, prune_neg=False): # Legacy code
         # return: [int] first variable denotes whether hyp is true (1)
         # or false (0) or non-deterministic (-1)
 
@@ -300,13 +300,14 @@ class KnowledgeBase:
         # else:
         #     return 0
 
+    @time_statistic
     def Graphoid(self, hyp: CIStatement):
         new_facts = self.facts.copy()
         new_facts.append(hyp)
         return self.graphoid_consistency_checking(new_facts)
     
     @time_statistic
-    def CheckConsistency(self): # 
+    def CheckConsistency(self): # ToM: if even the full EDsan fails to verify, should we still return True?
         # ci_euf = Function("ci_euf", BitVecSort(self.var_num), BitVecSort(self.var_num), BitVecSort(self.var_num), BitVecSort(2))
         # kb_constraint = KnowledgeBase.GenerateConstraints(self.facts, ci_euf, self.var_num)
         # solver = SolverFor("QF_UFBV")
@@ -367,8 +368,19 @@ class KnowledgeBase:
             rlt = solvers[name].check()
             if rlt == unsat: return False
         return True
+    
+    @time_statistic
+    def EDSanSlicingParallel(self, incoming_ci: CIStatement):
+        ps = ParallelSlicingSolver(self.var_num, [fact for fact in self.facts if fact.has_overlap(incoming_ci)], incoming_ci, self.compute_timeout("edsan_slicing"))
+        return ps.check_consistency()
+    
+    @time_statistic
+    def EDSanFullParallel(self, incoming_ci: CIStatement):
+        ps = ParallelPSanFullSolver(self.var_num, self.facts, incoming_ci, self.compute_timeout("edsan_full"))
+        return ps.check_pruning()
 
-    def EDSan(self, incoming_ci: CIStatement): # Todo: implement another PC.py for EDSan
+
+    def EDSan(self, incoming_ci: CIStatement): # Done: implement another PC.py for EDSan
         assert self.degenerate_check(incoming_ci), "There has been a degenerate case!"
         if ENABLE_MARGINAL_OMITTING:
             # Done: implement marginal omittings
@@ -542,11 +554,13 @@ class KnowledgeBase:
         if check_type == "psan_full":
             return int(max(30_000, 1000 * self.var_num * 2))
         elif check_type == "psan_slicing": # Todo: change coefficient and variable
-            return int(max(20_000, 1000 * len(self.facts)))
+            # return int(max(20_000, 1000 * len(self.facts)))
+            return int(max(10_000, 1000 * self.var_num ))
         elif check_type == "edsan_full":
             return int(max(30_000, 1000 * self.var_num * 2))
         elif check_type == "edsan_slicing":
-            return int(max(20_000, 1000 * self.var_num * 1.5))
+            # return int(max(20_000, 1000 * self.var_num * 1.5))
+            return int(max(10_000, 1000 * self.var_num ))
     
 
 

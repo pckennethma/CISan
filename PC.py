@@ -234,7 +234,7 @@ if __name__ == "__main__":
 
     # it seems that Z3 have some bug on asia
     benchmarks = ["earthquake", "survey", "cancer", "sachs",]
-    benchmarks = ["earthquake"]
+    benchmarks = ["cancer"]
 
     result = {
         bn: {"shd": [], "#CI Test": [], "#CI Query": [], "Eps": []} for bn in benchmarks
