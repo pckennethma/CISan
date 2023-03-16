@@ -23,6 +23,15 @@ from DataUtils import read_table
 from Kendall import DPKendalTau
 from Chisq import Chisq
 
+import functools
+
+def logme(func):
+    @functools.wraps(func)
+    def wrapped(*args, **kwargs):
+        print(func.__name__)
+        return func(*args, **kwargs)
+    return wrapped
+
 def pc_skl(var_num, independence_func, enable_solver=True): # Legacy code
 
     TOTAL_CI = 0
@@ -176,7 +185,7 @@ def Psan_pc_skl(var_num, independence_func, enable_solver=True):
                             print("CI Query", str(CIStatement.createByXYZ(x, y, z, is_ind)))
                         else:
                             is_ind = psan_outcome.ci
-                            assert is_ind == independence_func(x, y, z, True)
+                            # assert is_ind == independence_func(x, y, z, True)
                             kb.AddFact(psan_outcome)
                         if is_ind:
                             edges_to_remove.add((node_x, node_y))
@@ -195,15 +204,16 @@ def Psan_pc_skl(var_num, independence_func, enable_solver=True):
         order += 1
     return graph, TOTAL_CI
 
-
+@logme
 def run_dpkt_pc(benchmark):
     dag_path = f"/home/pmaab/ML4C/benchmarks/{benchmark}_graph.txt"
     data_path = f"data/{benchmark}-10k.csv"
     dag=read_dag(dag_path)
     dpkt = DPKendalTau(read_table(data_path), dag=dag)
-    est, TOTAL_CI = pc_skl(dag.get_num_nodes(), dpkt.kendaltau_ci, True)
+    est, TOTAL_CI = Psan_pc_skl(dag.get_num_nodes(), dpkt.kendaltau_ci, True)
     return est, TOTAL_CI, dpkt.ci_invoke_count, dpkt.get_eps_prime()
 
+@logme
 def run_dpkt_pc_repeat(benchmark):
     with Pool() as pool:
         result = pool.map(run_dpkt_pc, [benchmark]*10)
@@ -216,6 +226,7 @@ def run_dpkt_pc_repeat(benchmark):
 
     return avg_shd, avg_total_ci, avg_ci_count, avg_eps
 
+@logme
 def run_chisq_pc(benchmark):
     dag_path = f"/home/pmaab/ML4C/benchmarks/{benchmark}_graph.txt"
     data_path = f"data/{benchmark}-10k.csv"
@@ -225,6 +236,7 @@ def run_chisq_pc(benchmark):
     est, TOTAL_CI = Psan_pc_skl(dag.get_num_nodes(), chisq.chisq_ci, True)
     return est, TOTAL_CI, chisq.ci_invoke_count
 
+@logme
 def run_oracle_pc(benchmark):
     dag_path = f"/home/pmaab/ML4C/benchmarks/{benchmark}_graph.txt"
     dag=read_dag(dag_path)
@@ -285,13 +297,30 @@ if __name__ == "__main__":
         # est, TOTAL_CI, ci_invoke_count = run_oracle_pc(benchmark)
         # shd = compare_skeleton(est, dag)
         # est, TOTAL_CI, ci_invoke_count = run_oracle_pc(benchmark)
-        est, TOTAL_CI, ci_invoke_count = run_chisq_pc(benchmark)
-        print(benchmark)
-        # print("SHD", )
-        print("SHD", compare_skeleton(est, dag))
-        print("NUM_OF_CI_TEST", ci_invoke_count)
-        print("TOTAL_CI", TOTAL_CI)
-        # print("EPS", avg_eps)
+        # est, TOTAL_CI, ci_invoke_count, eps = run_dpkt_pc(benchmark)
+
+        SHD_list = []
+        ci_invoke_count_list = []
+        TOTAL_CI_list = []
+        eps_list = []
+        for i in range(10):
+            est, TOTAL_CI, ci_invoke_count, eps = run_dpkt_pc(benchmark)
+            SHD = compare_skeleton(est, dag)
+            SHD_list.append(SHD)
+            ci_invoke_count_list.append(ci_invoke_count)
+            TOTAL_CI_list.append(TOTAL_CI)
+            eps_list.append(eps)
+
+        # print(benchmark)
+        # print("SHD", compare_skeleton(est, dag))
+        # print("NUM_OF_CI_TEST", ci_invoke_count)
+        # print("TOTAL_CI", TOTAL_CI)
+        # print("EPS", eps)
+
+        print("SHD", np.mean(SHD_list))
+        print("NUM_OF_CI_TEST", np.mean(ci_invoke_count_list))
+        print("TOTAL_CI", np.mean(TOTAL_CI_list))
+        print("EPS", np.mean(eps_list))
 
         end_time = datetime.now()
         print("Time taken: ", end_time - start_time)

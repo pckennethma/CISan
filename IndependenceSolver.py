@@ -9,6 +9,7 @@ from Utility import *
 from ParallelSolver import ParallelSlicingSolver, ParallelPSanFullSolver, INCONSISTENT_KB
 
 from datetime import datetime
+import functools
 FUNCTION_TIME_DICT = {}
 
 CONSTRAINT_SLICING = True
@@ -19,6 +20,7 @@ ENABLE_MARGINAL_OMITTING = True # if true, we will omit Psan and EDsan if the po
 # psitip.PsiOpts.setting(solver = "pyomo.glpk")
 
 def time_statistic(func):
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
         start_time = datetime.now()
         result = func(*args, **kwargs)
@@ -110,7 +112,7 @@ class KnowledgeBase:
         return True
     
     @time_statistic
-    def marginal_ommitting(self, incoming_ci: CIStatement):
+    def marginal_omitting(self, incoming_ci: CIStatement):
         if incoming_ci.is_marginal():
             if all(map(lambda x: x.is_marginal(), self.facts)):
                 return True
@@ -333,7 +335,7 @@ class KnowledgeBase:
             if self.Graphoid(last_ci) == False:
                 return False
         if CONSTRAINT_SLICING:
-            if self.EDSanSlicing(last_ci) == False:
+            if self.EDSanSlicingParallel(last_ci) == False:
                 return False
         return self.EDSanFull(last_ci)
 
@@ -374,10 +376,6 @@ class KnowledgeBase:
         ps = ParallelSlicingSolver(self.var_num, [fact for fact in self.facts if fact.has_overlap(incoming_ci)], incoming_ci, self.compute_timeout("edsan_slicing"))
         return ps.check_consistency()
     
-    @time_statistic
-    def EDSanFullParallel(self, incoming_ci: CIStatement):
-        ps = ParallelPSanFullSolver(self.var_num, self.facts, incoming_ci, self.compute_timeout("edsan_full"))
-        return ps.check_consistency()
 
 
     def EDSan(self, incoming_ci: CIStatement): # Done: implement another PC.py for EDSan
