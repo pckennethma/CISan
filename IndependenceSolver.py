@@ -390,7 +390,7 @@ class KnowledgeBase:
             assert self.Graphoid(incoming_ci) == True, f"Graphoid find inconsistency on {incoming_ci}"
         if CONSTRAINT_SLICING:
             assert self.EDSanSlicingParallel(incoming_ci), f"EDSanSlicing find inconsistency on {incoming_ci}"
-        assert self.EDSanFullParallel(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
+        assert self.EDSanFull(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
     
     @time_statistic
     def Backtracking(self):
@@ -527,6 +527,8 @@ class KnowledgeBase:
     def graphoid_consistency_checking(self, facts: List[CIStatement]) -> bool:
         variables = psitip.rv(*[f"X{i}" for i in range(self.var_num)])
         ci_statements = [fact.graphoid_expr(variables) for fact in facts if fact.ci]
+        if len(ci_statements) == 0:
+            return True
         ci_facts = [fact for fact in facts if fact.ci]
         source_expr = psitip.alland(ci_statements)
         cd_term = [fact.graphoid_term(variables) for fact in facts if not fact.ci]

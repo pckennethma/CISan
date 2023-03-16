@@ -220,7 +220,8 @@ def run_chisq_pc(benchmark):
     data_path = f"data/{benchmark}-10k.csv"
     dag=read_dag(dag_path)
     chisq = Chisq(read_table(data_path), dag=dag)
-    est, TOTAL_CI = pc_skl(dag.get_num_nodes(), chisq.chisq_ci, True)
+    # est, TOTAL_CI = pc_skl(dag.get_num_nodes(), chisq.chisq_ci, True)
+    est, TOTAL_CI = EDsan_pc_skl(dag.get_num_nodes(), chisq.chisq_ci, True)
     return est, TOTAL_CI, chisq.ci_invoke_count
 
 def run_oracle_pc(benchmark):
@@ -273,7 +274,8 @@ if __name__ == "__main__":
         
         # est, TOTAL_CI, ci_invoke_count = run_oracle_pc(benchmark)
         # shd = compare_skeleton(est, dag)
-        est, TOTAL_CI, ci_invoke_count = run_oracle_pc(benchmark)
+        # est, TOTAL_CI, ci_invoke_count = run_oracle_pc(benchmark)
+        est, TOTAL_CI, ci_invoke_count = run_chisq_pc(benchmark)
         print(benchmark)
         # print("SHD", )
         print("SHD", compare_skeleton(est, dag))
