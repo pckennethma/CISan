@@ -102,8 +102,11 @@ class ErrorInjectionOracleCI:
             total_ci = 100
         else:
             total_ci = 1100
-        self.error_num = min(1, error_rate * total_ci)
-        self.error_injection_position = np.random.choice(range(total_ci), self.error_num, replace=False).tolist()
+        self.error_num = int(max(1, error_rate * total_ci))
+        print("Var Count: ", len(self.dag.get_nodes()))
+        print("Error injection num: ", self.error_num)
+        self.error_injection_position = np.random.choice(total_ci, self.error_num, replace=False).tolist()
+        print("Error injection pos: ", self.error_injection_position)
         self.ci_invoke_count = 0
 
     def oracle_ci(self, x: int, y: int, z: set[int], debug=False):
