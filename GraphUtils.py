@@ -90,7 +90,7 @@ class OracleCI:
         return y not in x_z_reachable
 
 class ErrorInjectionOracleCI:
-    def __init__(self, dag:Dag=None, error_rate:float=0.1):
+    def __init__(self, dag:Dag=None, error_rate:float=0.1, seed:int=0):
         self.dag = dag
         self.oracle_cache = {}
         self.error_rate = error_rate
@@ -105,6 +105,7 @@ class ErrorInjectionOracleCI:
         self.error_num = int(max(1, error_rate * total_ci))
         print("Var Count: ", len(self.dag.get_nodes()))
         print("Error injection num: ", self.error_num)
+        np.random.seed(seed)
         self.error_injection_position = np.random.choice(total_ci, self.error_num, replace=False).tolist()
         print("Error injection pos: ", self.error_injection_position)
         self.ci_invoke_count = 0

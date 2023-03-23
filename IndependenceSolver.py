@@ -339,6 +339,7 @@ class KnowledgeBase:
                 return False
         return self.EDSanFull(last_ci)
 
+    @time_statistic
     def EDSanFull(self, incoming_ci: CIStatement):
         ci_euf = Function("ci_euf", BitVecSort(self.var_num), BitVecSort(self.var_num), BitVecSort(self.var_num), BitVecSort(2))
         kb_constraint = KnowledgeBase.GenerateConstraints(self.facts, ci_euf, self.var_num)
@@ -382,12 +383,28 @@ class KnowledgeBase:
         # assert self.degenerate_check(incoming_ci), "There has been a degenerate case!"
         if ENABLE_MARGINAL_OMITTING:
             # Done: implement marginal omittings
-            if self.marginal_ommitting(incoming_ci):
+            if self.marginal_omitting(incoming_ci):
                 return
         if ENABLE_GRAPHOID:
             assert self.Graphoid(incoming_ci) == True, f"Graphoid find inconsistency on {incoming_ci}"
         if CONSTRAINT_SLICING:
             assert self.EDSanSlicingParallel(incoming_ci), f"EDSanSlicing find inconsistency on {incoming_ci}"
+        assert self.EDSanFull(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
+
+    def EDSan_ablation(
+            self, incoming_ci: CIStatement, if_marginal: bool = True, if_graphoid: bool = True,
+            if_slicing: bool = True):
+        # assert self.degenerate_check(incoming_ci), "There has been a degenerate case!"
+        if if_marginal:
+            if self.marginal_omitting(incoming_ci):
+                # print("marginal ommiting")
+                return
+        if if_graphoid:
+            assert self.Graphoid(
+                incoming_ci) == True, f"Graphoid find inconsistency on {incoming_ci}"
+        if if_slicing:
+            assert self.EDSanSlicingParallel(
+                incoming_ci), f"EDSanSlicing find inconsistency on {incoming_ci}"
         assert self.EDSanFull(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
     
     @time_statistic

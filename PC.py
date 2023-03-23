@@ -206,7 +206,7 @@ def Psan_pc_skl(var_num, independence_func, enable_solver=True):
 
 @logme
 def run_dpkt_pc(benchmark):
-    dag_path = f"/home/pmaab/ML4C/benchmarks/{benchmark}_graph.txt"
+    dag_path = f"/home/zjiae/Data/benchmarks/{benchmark}_graph.txt"
     data_path = f"data/{benchmark}-10k.csv"
     dag=read_dag(dag_path)
     dpkt = DPKendalTau(read_table(data_path), dag=dag)
@@ -217,7 +217,7 @@ def run_dpkt_pc(benchmark):
 def run_dpkt_pc_repeat(benchmark):
     with Pool() as pool:
         result = pool.map(run_dpkt_pc, [benchmark]*10)
-    dag_path = f"/home/pmaab/ML4C/benchmarks/{benchmark}_graph.txt"
+    dag_path = f"/home/zjiae/Data/benchmarks/{benchmark}_graph.txt"
     dag=read_dag(dag_path)
     avg_shd = np.mean([compare_skeleton(rlt[0], dag) for rlt in result])
     avg_total_ci = np.mean([rlt[1] for rlt in result])
@@ -228,7 +228,7 @@ def run_dpkt_pc_repeat(benchmark):
 
 @logme
 def run_chisq_pc(benchmark):
-    dag_path = f"/home/pmaab/ML4C/benchmarks/{benchmark}_graph.txt"
+    dag_path = f"/home/zjiae/Data/benchmarks/{benchmark}_graph.txt"
     data_path = f"data/{benchmark}-10k.csv"
     dag=read_dag(dag_path)
     chisq = Chisq(read_table(data_path), dag=dag)
@@ -238,12 +238,12 @@ def run_chisq_pc(benchmark):
 
 @logme
 def run_oracle_pc(benchmark):
-    dag_path = f"/home/pmaab/ML4C/benchmarks/{benchmark}_graph.txt"
+    dag_path = f"/home/zjiae/Data/benchmarks/{benchmark}_graph.txt"
     dag=read_dag(dag_path)
     oracle = OracleCI(dag=dag)
     # est, TOTAL_CI = pc_skl(dag.get_num_nodes(), oracle.oracle_ci, True)
-    # est, TOTAL_CI = Psan_pc_skl(dag.get_num_nodes(), oracle.oracle_ci, True)
-    est, TOTAL_CI = EDsan_pc_skl(dag.get_num_nodes(), oracle.oracle_ci, True)
+    est, TOTAL_CI = Psan_pc_skl(dag.get_num_nodes(), oracle.oracle_ci, True)
+    # est, TOTAL_CI = EDsan_pc_skl(dag.get_num_nodes(), oracle.oracle_ci, True)
     return est, TOTAL_CI, oracle.ci_invoke_count
 
 if __name__ == "__main__":
@@ -251,6 +251,9 @@ if __name__ == "__main__":
     parser.add_argument("--benchmarks", "-b", type=str,
                         choices=["earthquake", "survey", "cancer", "sachs"],
                         default="earthquake")
+    parser.add_argument("--function", "-f", type=str,
+                        choices=["dpkt", "chisq", "oracle"],
+                        default="oracle")
 
     args = parser.parse_args()
 
@@ -268,7 +271,7 @@ if __name__ == "__main__":
 
     for benchmark in benchmarks:
 
-        dag_path = f"/home/pmaab/ML4C/benchmarks/{benchmark}_graph.txt"
+        dag_path = f"/home/zjiae/Data/benchmarks/{benchmark}_graph.txt"
         dag=read_dag(dag_path)
         # dag = read_dag(dag_path)
         # REACHABLE = {}
@@ -296,31 +299,36 @@ if __name__ == "__main__":
         
         # est, TOTAL_CI, ci_invoke_count = run_oracle_pc(benchmark)
         # shd = compare_skeleton(est, dag)
-        # est, TOTAL_CI, ci_invoke_count = run_oracle_pc(benchmark)
+        if args.function == "oracle":
+            est, TOTAL_CI, ci_invoke_count = run_oracle_pc(benchmark)
+        elif args.function == "chisq":
+            est, TOTAL_CI, ci_invoke_count = run_chisq_pc(benchmark)
+        else: 
+            raise NotImplementedError
         # est, TOTAL_CI, ci_invoke_count, eps = run_dpkt_pc(benchmark)
 
-        SHD_list = []
-        ci_invoke_count_list = []
-        TOTAL_CI_list = []
-        eps_list = []
-        for i in range(10):
-            est, TOTAL_CI, ci_invoke_count, eps = run_dpkt_pc(benchmark)
-            SHD = compare_skeleton(est, dag)
-            SHD_list.append(SHD)
-            ci_invoke_count_list.append(ci_invoke_count)
-            TOTAL_CI_list.append(TOTAL_CI)
-            eps_list.append(eps)
-
-        # print(benchmark)
-        # print("SHD", compare_skeleton(est, dag))
-        # print("NUM_OF_CI_TEST", ci_invoke_count)
-        # print("TOTAL_CI", TOTAL_CI)
+        print(benchmark)
+        print("SHD", compare_skeleton(est, dag))
+        print("NUM_OF_CI_TEST", ci_invoke_count)
+        print("TOTAL_CI", TOTAL_CI)
         # print("EPS", eps)
 
-        print("SHD", np.mean(SHD_list))
-        print("NUM_OF_CI_TEST", np.mean(ci_invoke_count_list))
-        print("TOTAL_CI", np.mean(TOTAL_CI_list))
-        print("EPS", np.mean(eps_list))
+        # SHD_list = []
+        # ci_invoke_count_list = []
+        # TOTAL_CI_list = []
+        # eps_list = []
+        # for i in range(10):
+        #     est, TOTAL_CI, ci_invoke_count, eps = run_dpkt_pc(benchmark)
+        #     SHD = compare_skeleton(est, dag)
+        #     SHD_list.append(SHD)
+        #     ci_invoke_count_list.append(ci_invoke_count)
+        #     TOTAL_CI_list.append(TOTAL_CI)
+        #     eps_list.append(eps)
+
+        # print("SHD", np.mean(SHD_list))
+        # print("NUM_OF_CI_TEST", np.mean(ci_invoke_count_list))
+        # print("TOTAL_CI", np.mean(TOTAL_CI_list))
+        # print("EPS", np.mean(eps_list))
 
         end_time = datetime.now()
         print("Time taken: ", end_time - start_time)
