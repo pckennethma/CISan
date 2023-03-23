@@ -4,7 +4,7 @@ from DataUtils import read_table
 from GraphUtils import *
 from Utility import CIStatement
 import IndependenceSolver
-from IndependenceSolver import KnowledgeBase, FUNCTION_TIME_DICT, EDsanAssertError
+from IndependenceSolver import KnowledgeBase, FUNCTION_TIME_DICT, EDsanAssertError, MARGINAL_COUNT
 import numpy as np
 import pandas as pd
 import json
@@ -84,6 +84,7 @@ def EDsan_pc_skl(var_num, independence_func, enable_solver=True, use_marginal=Tr
 def run_error_injection_oracle_pc(
         benchmark, error_rate=0.1, seed: int = 0, use_marginal=True, use_graphoid=True,
         use_slicing=True):
+    global MARGINAL_COUNT
     dag_path = f"/home/zjiae/Data/benchmarks/{benchmark}_graph.txt"
     dag = read_dag(dag_path)
     oracle = ErrorInjectionOracleCI(dag=dag, error_rate=error_rate, seed=seed)
@@ -101,7 +102,9 @@ def run_error_injection_oracle_pc(
         method_name = e.method_name
         print(f"Error Detected: {e}")
         print("======================================")
-    return error_detected, method_name, oracle.error_num, oracle.ci_invoke_count, oracle.error_injection_position
+    marginal_count = MARGINAL_COUNT
+    MARGINAL_COUNT = 0
+    return error_detected, method_name, oracle.error_num, oracle.ci_invoke_count, oracle.error_injection_position, marginal_count
 
 
 if __name__ == "__main__":
@@ -125,15 +128,18 @@ if __name__ == "__main__":
         "ci_count": [],
         "error_injection_position": [],
         "last_time": [],
+        "method_name": [],
+        "marginal_count": [],
         "args": f"{args}"}
     for seed in range(10):
         start_time = datetime.now()
         dag_path = f"/home/zjiae/Data/benchmarks/{benchmark}_graph.txt"
         dag = read_dag(dag_path)
-        error_detected, method_name, error_count, ci_count, error_injection_position = run_error_injection_oracle_pc(
+        error_detected, method_name, error_count, ci_count, error_injection_position, marginal_count = run_error_injection_oracle_pc(
             benchmark, args.error_ratio, seed, args.use_marginal, args.use_graphoid, args.use_slicing)
 
         result["method_name"].append(method_name)
+        result["marginal_count"].append(marginal_count)
         result["error_detected"].append(error_detected)
         result["error_count"].append(error_count)
         result["ci_count"].append(ci_count)

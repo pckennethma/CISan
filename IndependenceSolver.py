@@ -12,6 +12,7 @@ from datetime import datetime
 import functools
 FUNCTION_TIME_DICT = {}
 
+MARGINAL_COUNT = 0
 CONSTRAINT_SLICING = True
 MAX_BACKTRACK_THRESHOLD = 10
 ENABLE_PARALLEL = True
@@ -404,6 +405,8 @@ class KnowledgeBase:
         # assert self.degenerate_check(incoming_ci), "There has been a degenerate case!"
         if use_marginal:
             if self.marginal_omitting(incoming_ci):
+                global MARGINAL_COUNT
+                MARGINAL_COUNT += 1
                 # print("marginal ommiting")
                 return
         if use_graphoid:
