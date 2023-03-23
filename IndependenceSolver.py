@@ -19,6 +19,13 @@ ENABLE_GRAPHOID = True
 ENABLE_MARGINAL_OMITTING = True # if true, we will omit Psan and EDsan if the pool only contains marginal statements
 # psitip.PsiOpts.setting(solver = "pyomo.glpk")
 
+class EDsanAssertError(Exception):
+    def __init__(self, method_name, message):
+        self.method_name = method_name
+        self.message = message
+        super().__init__(self.message)
+
+
 def time_statistic(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
@@ -392,20 +399,26 @@ class KnowledgeBase:
         assert self.EDSanFull(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
 
     def EDSan_ablation(
-            self, incoming_ci: CIStatement, if_marginal: bool = True, if_graphoid: bool = True,
-            if_slicing: bool = True):
+            self, incoming_ci: CIStatement, use_marginal: bool = True, use_graphoid: bool = True,
+            use_slicing: bool = True):
         # assert self.degenerate_check(incoming_ci), "There has been a degenerate case!"
-        if if_marginal:
+        if use_marginal:
             if self.marginal_omitting(incoming_ci):
                 # print("marginal ommiting")
                 return
-        if if_graphoid:
-            assert self.Graphoid(
-                incoming_ci) == True, f"Graphoid find inconsistency on {incoming_ci}"
-        if if_slicing:
-            assert self.EDSanSlicingParallel(
-                incoming_ci), f"EDSanSlicing find inconsistency on {incoming_ci}"
-        assert self.EDSanFull(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
+        if use_graphoid:
+            # assert self.Graphoid(
+            #     incoming_ci) == True, f"Graphoid find inconsistency on {incoming_ci}"
+            if self.Graphoid(incoming_ci) == False:
+                raise EDsanAssertError("Graphoid", "Graphoid find inconsistency on {incoming_ci}")
+        if use_slicing:
+            # assert self.EDSanSlicingParallel(
+            #     incoming_ci), f"EDSanSlicing find inconsistency on {incoming_ci}"
+            if self.EDSanSlicingParallel(incoming_ci) == False:
+                raise EDsanAssertError("EDSanSlicing", "EDSanSlicing find inconsistency on {incoming_ci}")
+        # assert self.EDSanFull(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
+        if self.EDSanFull(incoming_ci) == False:
+            raise EDsanAssertError("EDSanFull", "EDSanFull find inconsistency on {incoming_ci}")
     
     @time_statistic
     def Backtracking(self):
