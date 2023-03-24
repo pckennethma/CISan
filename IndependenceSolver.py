@@ -6,7 +6,7 @@ from itertools import chain
 from multiprocessing import Pool
 from Rules import RuleContext
 from Utility import *
-from ParallelSolver import ParallelSlicingSolver, ParallelPSanFullSolver, ParaallelHybirdEDSanSolver, INCONSISTENT_KB
+from ParallelSolver import ParallelSlicingSolver, ParallelPSanFullSolver, ParallelHybridEDSanSolver, INCONSISTENT_KB
 
 from datetime import datetime
 import functools
@@ -386,8 +386,8 @@ class KnowledgeBase:
         return ps.check_consistency()
     
     @time_statistic
-    def EDSanHybirdParallel(self, incoming_ci: CIStatement):
-        ps = ParaallelHybirdEDSanSolver(self.var_num, self.facts, incoming_ci, self.compute_timeout("edsan_slicing"), self.compute_timeout("edsan_full"))
+    def EDSanHybridParallel(self, incoming_ci: CIStatement):
+        ps = ParallelHybridEDSanSolver(self.var_num, self.facts, incoming_ci, self.compute_timeout("edsan_slicing"), self.compute_timeout("edsan_full"))
         return ps.check_consistency()
 
     def EDSan(self, incoming_ci: CIStatement): # Done: implement another PC.py for EDSan
@@ -420,8 +420,12 @@ class KnowledgeBase:
         if use_slicing:
             # assert self.EDSanSlicingParallel(
             #     incoming_ci), f"EDSanSlicing find inconsistency on {incoming_ci}"
-            if self.EDSanHybirdParallel(incoming_ci) == False:
-                raise EDsanAssertError("EDSanSlicing", "EDSanSlicing find inconsistency on {incoming_ci}")
+            ret, if_slicing_find= self.EDSanHybridParallel(incoming_ci)
+            if ret == False:
+                if if_slicing_find:
+                    raise EDsanAssertError("EDSanSlicing", "EDSanSlicing find inconsistency on {incoming_ci}")
+                else:
+                    raise EDsanAssertError("EDSanFull", "EDSanFull find inconsistency on {incoming_ci}")
         else:
             # assert self.EDSanFull(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
             if self.EDSanFull(incoming_ci) == False:
