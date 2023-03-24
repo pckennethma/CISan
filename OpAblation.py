@@ -96,7 +96,7 @@ def run_detection(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--benchmarks", "-b", type=str,
+    parser.add_argument("--benchmark", "-b", type=str,
                         choices=["earthquake", "survey", "cancer", "sachs"],
                         default="sachs")
     parser.add_argument("--method-name", "-m", type=str,
@@ -118,7 +118,7 @@ if __name__ == "__main__":
         if run_detection(kb, args.error_ratio, seed, args.method_name):
             detected_num += 1
     print(f"Detected {detected_num} out of {total_num} errors")
-    
+
     end_time = datetime.now()
     last_time = end_time - start_time
     print("Time taken: ", last_time)
