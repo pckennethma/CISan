@@ -59,8 +59,9 @@ class KnowledgeBase:
         self.facts += facts
 
     # Done: Add a function to randomly flip x% of the facts, (and return the flipped facts list)
-    def Perturb(self, ratio: float):
+    def Perturb(self, ratio: float, seed:int):
         # perturbed_facts = []
+        random.seed(seed)
         select_index= random.sample(range(len(self.facts)), int(len(self.facts)*ratio))
         for ind in select_index:
             self.facts[ind].ci = not self.facts[ind].ci

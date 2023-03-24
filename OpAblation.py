@@ -82,7 +82,6 @@ def EDsan_pc_skl(var_num, independence_func, enable_solver=False):
 
 def run_detection(
         kb, error_rate: float, seed: int, method_name: str):
-
     kb.Perturb(error_rate, seed)
     last_ci = kb.facts.pop()
     try:
