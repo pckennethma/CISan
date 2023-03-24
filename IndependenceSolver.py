@@ -6,7 +6,7 @@ from itertools import chain
 from multiprocessing import Pool
 from Rules import RuleContext
 from Utility import *
-from ParallelSolver import ParallelSlicingSolver, ParallelPSanFullSolver, INCONSISTENT_KB
+from ParallelSolver import ParallelSlicingSolver, ParallelPSanFullSolver, ParaallelHybirdEDSanSolver, INCONSISTENT_KB
 
 from datetime import datetime
 import functools
@@ -385,7 +385,10 @@ class KnowledgeBase:
         ps = ParallelSlicingSolver(self.var_num, [fact for fact in self.facts if fact.has_overlap(incoming_ci)], incoming_ci, self.compute_timeout("edsan_slicing"))
         return ps.check_consistency()
     
-
+    @time_statistic
+    def EDSanHybirdParallel(self, incoming_ci: CIStatement):
+        ps = ParaallelHybirdEDSanSolver(self.var_num, self.facts, incoming_ci, self.compute_timeout("edsan_slicing"), self.compute_timeout("edsan_full"))
+        return ps.check_consistency()
 
     def EDSan(self, incoming_ci: CIStatement): # Done: implement another PC.py for EDSan
         # assert self.degenerate_check(incoming_ci), "There has been a degenerate case!"
@@ -417,11 +420,12 @@ class KnowledgeBase:
         if use_slicing:
             # assert self.EDSanSlicingParallel(
             #     incoming_ci), f"EDSanSlicing find inconsistency on {incoming_ci}"
-            if self.EDSanSlicingParallel(incoming_ci) == False:
+            if self.EDSanHybirdParallel(incoming_ci) == False:
                 raise EDsanAssertError("EDSanSlicing", "EDSanSlicing find inconsistency on {incoming_ci}")
-        # assert self.EDSanFull(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
-        if self.EDSanFull(incoming_ci) == False:
-            raise EDsanAssertError("EDSanFull", "EDSanFull find inconsistency on {incoming_ci}")
+        else:
+            # assert self.EDSanFull(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
+            if self.EDSanFull(incoming_ci) == False:
+                raise EDsanAssertError("EDSanFull", "EDSanFull find inconsistency on {incoming_ci}")
     
     @time_statistic
     def Backtracking(self):

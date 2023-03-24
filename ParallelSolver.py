@@ -78,6 +78,54 @@ class ParallelSlicingSolver:
         solver.set("timeout", timeout)
         return_dict[index] = solver.check()
 
+class ParaallelHybirdEDSanSolver:
+    rule_set = ["symmetric_rule", "decomposition_rule", "weak_union_rule", 
+                       "contraction_rule", "intersection_rule", "composition_rule",
+                       "chordality_rule"]
+
+    def __init__(self, var_num: int, ci_facts: List[CIStatement], incoming_ci: CIStatement, slicing_timeout:int, full_timeout:int):
+        self.var_num = var_num
+        self.ci_facts = ci_facts
+        self.incoming_ci = incoming_ci
+        self.slicing_timeout = slicing_timeout
+        self.full_timeout = full_timeout
+        self.manager= Manager()
+
+    def check_consistency(self):
+        self.return_dict = self.manager.dict()
+        jobs: List[Process] = []
+
+        fp = Process(target=ParallelSlicingSolver.worker, args=(idx, "full", self.var_num, self.ci_facts + [self.incoming_ci], self.full_timeout, self.return_dict))
+        fp.start()
+
+        for idx, rule_name in enumerate(ParallelSlicingSolver.rule_set):
+            p = Process(target=ParallelSlicingSolver.worker, args=(idx, rule_name, self.var_num, self.ci_facts + [self.incoming_ci], self.slicing_timeout, self.return_dict))
+            jobs.append(p)
+            p.start()
+        
+        for proc in jobs:
+            proc.join()
+        if unsat in self.return_dict.values(): return False
+        fp.join()
+        return unsat not in self.return_dict.values()
+
+    @staticmethod
+    def worker(index:int ,rule_name: str, var_num:int, ci_facts: List[CIStatement], timeout:int, return_dict):
+        solver = SolverFor("QF_UFBV")
+        ci_euf = Function("ci_euf", BitVecSort(var_num), BitVecSort(var_num), BitVecSort(var_num), BitVecSort(2))
+        rule_ctx = RuleContext(var_num, ci_euf)
+        if rule_name == "full":
+            for rule in rule_ctx.constraints.items(): 
+                solver.add(rule[1])
+        else:
+            solver.add(rule_ctx.constraints["initial_validity_condition"])
+            solver.add(rule_ctx.constraints[rule_name])
+        for ci in ci_facts:
+            if rule_name == "full" or ci_facts[-1].has_overlap(ci):
+                solver.add(ci.generate_constraint(ci_euf, var_num))
+        solver.set("timeout", timeout)
+        return_dict[index] = solver.check()
+
 class ParallelPSanFullSolver:
 
     def __init__(self, var_num: int, ci_facts: List[CIStatement], incoming_ci: CIStatement, timeout:int, max_workers=32):
