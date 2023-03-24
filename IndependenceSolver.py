@@ -48,6 +48,9 @@ class KnowledgeBase:
         self.var_num = var_num
         self.do_track = do_trace
         self.backtrack_count = 0
+
+    def copy(self):
+        return KnowledgeBase(self.facts, self.var_num, self.do_track)
     
     def AddFact(self, fact: CIStatement):
         self.facts.append(fact)
@@ -57,12 +60,12 @@ class KnowledgeBase:
 
     # Done: Add a function to randomly flip x% of the facts, (and return the flipped facts list)
     def Perturb(self, ratio: float):
-        perturbed_facts = []
+        # perturbed_facts = []
         select_index= random.sample(range(len(self.facts)), int(len(self.facts)*ratio))
         for ind in select_index:
             self.facts[ind].ci = not self.facts[ind].ci
-            perturbed_facts.append(self.facts[ind])
-        return perturbed_facts
+            # perturbed_facts.append(self.facts[ind])
+        return select_index
 
     # def ConstructKB(self):
     #     converted_facts = []
@@ -430,6 +433,19 @@ class KnowledgeBase:
             # assert self.EDSanFull(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
             if self.EDSanFull(incoming_ci) == False:
                 raise EDsanAssertError("EDSanFull", "EDSanFull find inconsistency on {incoming_ci}")
+    
+    def EDsan_singleM(
+            self, incoming_ci: CIStatement, method_name:str):
+        if self.marginal_omitting(incoming_ci):
+            return
+        if method_name == "Graphoid":
+            assert self.Graphoid(
+                incoming_ci) == True, f"Graphoid find inconsistency on {incoming_ci}"
+        elif method_name == "Slicing":
+            assert self.EDSanSlicingParallel(
+                incoming_ci), f"EDSanSlicing find inconsistency on {incoming_ci}"
+        else:
+            raise ValueError("method_name should be either Graphoid or Slicing")
     
     @time_statistic
     def Backtracking(self):
