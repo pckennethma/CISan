@@ -4,10 +4,10 @@ from DataUtils import read_table
 from GraphUtils import *
 from Utility import CIStatement
 import IndependenceSolver
-from IndependenceSolver import KnowledgeBase, FUNCTION_TIME_DICT
+from IndependenceSolver import KnowledgeBase, FUNCTION_TIME_DICT, EDsanAssertError
 import numpy as np
 import pandas as pd
-import copy
+import statistics
 from multiprocessing import Pool
 from typing import List, Set, Dict
 from functools import partial
@@ -83,18 +83,24 @@ def EDsan_pc_skl(var_num, independence_func, enable_solver=False):
     return graph, TOTAL_CI, kb
 
 
-def run_detection(
-        kb, error_rate: float, seed: int, method_name: str):
-    kb.Perturb(error_rate, seed)
+def run_detection(kb: KnowledgeBase, error_rate: float, seed: int,
+                  use_marginal=True, use_graphoid=True, use_slicing=True):
+    start_time = datetime.now()
+    # kb.Perturb(error_rate, seed)
+    kb.FlipOne(seed)
     last_ci = kb.facts.pop()
     error_detected = False
+    method_name = None
     try:
-        kb.EDsan_singleM(last_ci, method_name)
-    except AssertionError:
+        kb.EDSan_ablation(last_ci, use_marginal, use_graphoid, use_slicing)
+    except EDsanAssertError as e:
         error_detected = True
-        print("Error Detected")
+        method_name = e.method_name
+        print(f"Error Detected: {e}")
         print("======================================")
-    return error_detected
+    end_time = datetime.now()
+    last_time = (end_time - start_time).total_seconds()
+    return error_detected, method_name, last_time
 
 
 if __name__ == "__main__":
@@ -102,14 +108,17 @@ if __name__ == "__main__":
     parser.add_argument("--benchmark", "-b", type=str,
                         choices=["earthquake", "survey", "cancer", "sachs"],
                         default="sachs")
-    parser.add_argument("--method-name", "-m", type=str,
-                        default="Graphoid",
-                        choices=["Graphoid", "Slicing"])
+    parser.add_argument("--use_marginal", "-um", action="store_true")
+    parser.add_argument("--use_graphoid", "-ug", action="store_true")
+    parser.add_argument("--use_slicing", "-us", action="store_true")
     parser.add_argument("--error-ratio", "-r", type=float, default=0.01)
     args = parser.parse_args()
     print(args)
+    print("Flip one CI")
     print("=========================================")
 
+    method_list = []
+    time_list = []
     start_time = datetime.now()
     detected_num = 0
     total_num = 100
@@ -121,12 +130,19 @@ if __name__ == "__main__":
     print("SHD", compare_skeleton(est, dag))
     print("Start detection")
     for seed in range(total_num):
-        if run_detection(kb.copy(), args.error_ratio, seed, args.method_name):
+        error_detected, method_name, last_time = run_detection(
+            kb.copy(), args.error_ratio, seed, args.use_marginal, args.use_graphoid, args.use_slicing)
+        if error_detected:
             detected_num += 1
-    print(f"Detected {detected_num} out of {total_num} errors")
-
+            method_list.append(method_name)
+            time_list.append(last_time)
     end_time = datetime.now()
-    last_time = end_time - start_time
-    print("Time taken: ", last_time)
-    for key, val in FUNCTION_TIME_DICT.items():
-        print(f"Function: {key}, Total time: {val[0]}, Total count: {val[1]}")
+    print(
+        f"Optimization Marginal: {args.use_marginal}, Graphoid: {args.use_graphoid}, Slicing: {args.use_slicing}")
+    print("All Time taken: ", end_time - start_time)
+    print("Average time taken: ", sum(time_list) / len(time_list))
+    print(f"Time standard deviation: {statistics.stdev(time_list)}")
+    print(f"Detected {detected_num} out of {total_num} errors")
+    print("Method list", method_list)
+    # for key, val in FUNCTION_TIME_DICT.items():
+    #     print(f"Function: {key}, Total time: {val[0]}, Total count: {val[1]}")

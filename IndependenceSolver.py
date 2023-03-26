@@ -67,6 +67,12 @@ class KnowledgeBase:
             self.facts[ind].ci = not self.facts[ind].ci
             # perturbed_facts.append(self.facts[ind])
         return select_index
+    
+    def FlipOne(self, seed:int):
+        random.seed(seed)
+        ind = random.randint(0, len(self.facts)-2)
+        self.facts[ind].ci = not self.facts[ind].ci
+        return ind
 
     # def ConstructKB(self):
     #     converted_facts = []
@@ -407,9 +413,9 @@ class KnowledgeBase:
         assert self.EDSanFull(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
 
     def EDSan_ablation(
-            self, incoming_ci: CIStatement, use_marginal: bool = True, use_graphoid: bool = True,
-            use_slicing: bool = True):
-        # assert self.degenerate_check(incoming_ci), "There has been a degenerate case!"
+            self, incoming_ci: CIStatement, use_marginal: bool = True, use_graphoid: bool = False,
+            use_slicing: bool = False):
+        print(f"Current Optimization: marginal={use_marginal}, graphoid={use_graphoid}, slicing={use_slicing}")
         if use_marginal:
             if self.marginal_omitting(incoming_ci):
                 global MARGINAL_COUNT
@@ -420,20 +426,20 @@ class KnowledgeBase:
             # assert self.Graphoid(
             #     incoming_ci) == True, f"Graphoid find inconsistency on {incoming_ci}"
             if self.Graphoid(incoming_ci) == False:
-                raise EDsanAssertError("Graphoid", "Graphoid find inconsistency on {incoming_ci}")
+                raise EDsanAssertError("Graphoid", f"Graphoid find inconsistency on {incoming_ci}")
         if use_slicing:
             # assert self.EDSanSlicingParallel(
             #     incoming_ci), f"EDSanSlicing find inconsistency on {incoming_ci}"
             ret, if_slicing_find= self.EDSanHybridParallel(incoming_ci)
             if ret == False:
                 if if_slicing_find:
-                    raise EDsanAssertError("EDSanSlicing", "EDSanSlicing find inconsistency on {incoming_ci}")
+                    raise EDsanAssertError("EDSanSlicing", f"EDSanSlicing find inconsistency on {incoming_ci}")
                 else:
-                    raise EDsanAssertError("EDSanFull", "EDSanFull find inconsistency on {incoming_ci}")
+                    raise EDsanAssertError("EDSanFull (with Slicing)", f"EDSanFull find inconsistency on {incoming_ci}")
         else:
             # assert self.EDSanFull(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
             if self.EDSanFull(incoming_ci) == False:
-                raise EDsanAssertError("EDSanFull", "EDSanFull find inconsistency on {incoming_ci}")
+                raise EDsanAssertError("EDSanFull", f"EDSanFull find inconsistency on {incoming_ci}")
     
     def EDsan_singleM(
             self, incoming_ci: CIStatement, method_name:str):
