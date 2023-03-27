@@ -70,12 +70,12 @@ class KnowledgeBase:
     
     def FlipOne(self, seed:int):
         random.seed(seed)
-        ind = random.randint(-50, len(self.facts)-2)
+        ind = random.randint(0, len(self.facts)-2)
         self.facts[ind].ci = not self.facts[ind].ci
         for idx, fact in enumerate(self.facts):
             if idx != ind:
                 if fact.is_form_equal(self.facts[ind]):
-                    self.facts[idx].ci = self.facts[idx].ci
+                    self.facts[idx].ci = self.facts[ind].ci
         return ind
 
     # def ConstructKB(self):

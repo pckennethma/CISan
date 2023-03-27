@@ -83,7 +83,7 @@ class ParallelHybridEDSanSolver:
                        "contraction_rule", "intersection_rule", "composition_rule",
                        "chordality_rule"]
     
-    dump_unsat_core = False
+    dump_unsat_core = True
 
     def __init__(self, var_num: int, ci_facts: List[CIStatement], incoming_ci: CIStatement, slicing_timeout:int, full_timeout:int):
         self.var_num = var_num
