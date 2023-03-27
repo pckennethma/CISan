@@ -128,7 +128,7 @@ class ParallelHybridEDSanSolver:
 
 class ParallelGraphoidEDSanSolver:
 
-    def __init__(self, var_num: int, ci_facts: List[CIStatement], incoming_ci: CIStatement, slicing_timeout:int, full_timeout:int):
+    def __init__(self, var_num: int, ci_facts: List[CIStatement], incoming_ci: CIStatement):
         self.var_num = var_num
         self.new_facts = ci_facts.copy()
         self.new_facts.append(incoming_ci)
