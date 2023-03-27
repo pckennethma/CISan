@@ -126,6 +126,35 @@ class ParaallelHybirdEDSanSolver:
         solver.set("timeout", timeout)
         return_dict[index] = solver.check()
 
+class ParaallelGraphoidEDSanSolver:
+
+    def __init__(self, var_num: int, ci_facts: List[CIStatement], incoming_ci: CIStatement, slicing_timeout:int, full_timeout:int):
+        self.var_num = var_num
+        self.new_facts = ci_facts.copy()
+        self.new_facts.append(incoming_ci)
+        self.variables = psitip.rv(*[f"X{i}" for i in range(self.var_num)])
+        self.ci_statements = [fact.graphoid_expr(self.variables) for fact in self.new_facts if fact.ci]
+        self.source_expr = psitip.alland(self.ci_statements)
+        self.cd_terms = [fact.graphoid_term(self.variables) for fact in self.new_facts if not fact.ci]
+        self.manager= Manager()
+
+    def check_consistency(self):
+        self.return_dict = self.manager.dict()
+        jobs: List[Process] = []
+
+        for _, cd_term in enumerate(self.cd_terms):
+            p = Process(target=ParaallelGraphoidEDSanSolver.worker, args=(cd_term, self.source_expr, self.return_dict))
+            jobs.append(p)
+            p.start()
+        for proc in jobs:
+            proc.join()
+
+        return True not in self.return_dict.values()
+
+    @staticmethod
+    def worker(cd_term: psitip.Expr, source_expr: psitip.Region, return_dict):
+        return_dict[cd_term] = source_expr.get_bayesnet().check_ic(cd_term)
+
 class ParallelPSanFullSolver:
 
     def __init__(self, var_num: int, ci_facts: List[CIStatement], incoming_ci: CIStatement, timeout:int, max_workers=32):
