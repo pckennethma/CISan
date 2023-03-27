@@ -126,7 +126,7 @@ class ParallelHybridEDSanSolver:
         solver.set("timeout", timeout)
         return_dict[index] = solver.check()
 
-class ParaallelGraphoidEDSanSolver:
+class ParallelGraphoidEDSanSolver:
 
     def __init__(self, var_num: int, ci_facts: List[CIStatement], incoming_ci: CIStatement, slicing_timeout:int, full_timeout:int):
         self.var_num = var_num
@@ -143,7 +143,7 @@ class ParaallelGraphoidEDSanSolver:
         jobs: List[Process] = []
 
         for _, cd_term in enumerate(self.cd_terms):
-            p = Process(target=ParaallelGraphoidEDSanSolver.worker, args=(cd_term, self.source_expr, self.return_dict))
+            p = Process(target=ParallelGraphoidEDSanSolver.worker, args=(cd_term, self.source_expr, self.return_dict))
             jobs.append(p)
             p.start()
         for proc in jobs:
