@@ -1,6 +1,6 @@
 from Rules import RuleContext
 from Utility import *
-from multiprocessing import Manager, Process
+from multiprocessing import Manager, Process, Pool
 from typing import List, Tuple
 
 INCONSISTENT_KB = "INCONSISTENT_KB"
@@ -140,14 +140,12 @@ class ParallelGraphoidEDSanSolver:
 
     def check_consistency(self):
         self.return_dict = self.manager.dict()
-        jobs: List[Process] = []
+        pool = Pool(processes=48)
 
         for _, cd_term in enumerate(self.cd_terms):
-            p = Process(target=ParallelGraphoidEDSanSolver.worker, args=(cd_term, self.source_expr, self.return_dict))
-            jobs.append(p)
-            p.start()
-        for proc in jobs:
-            proc.join()
+            pool.apply_async(ParallelGraphoidEDSanSolver.worker, args=(cd_term, self.source_expr, self.return_dict))
+        pool.close()
+        pool.join()
 
         return True not in self.return_dict.values()
 
