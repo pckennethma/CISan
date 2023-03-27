@@ -6,7 +6,7 @@ from itertools import chain
 from multiprocessing import Pool
 from Rules import RuleContext
 from Utility import *
-from ParallelSolver import ParallelSlicingSolver, ParallelPSanFullSolver, ParallelHybridEDSanSolver, INCONSISTENT_KB
+from ParallelSolver import ParallelSlicingSolver, ParallelPSanFullSolver, ParallelHybridEDSanSolver, INCONSISTENT_KB, ParallelGraphoidEDSanSolver
 
 from datetime import datetime
 import functools
@@ -397,7 +397,15 @@ class KnowledgeBase:
     
     @time_statistic
     def EDSanHybridParallel(self, incoming_ci: CIStatement):
-        ps = ParallelHybridEDSanSolver(self.var_num, self.facts, incoming_ci, self.compute_timeout("edsan_slicing"), self.compute_timeout("edsan_full"))
+        ps = ParallelHybridEDSanSolver(
+            self.var_num, self.facts, incoming_ci, self.compute_timeout("edsan_slicing"),
+            self.compute_timeout("edsan_full"))
+        return ps.check_consistency()
+    
+    @time_statistic
+    def EDsanGraphoidParallel(self, incoming_ci: CIStatement):
+        ps = ParallelGraphoidEDSanSolver(
+            self.var_num, self.facts, incoming_ci)
         return ps.check_consistency()
 
     def EDSan(self, incoming_ci: CIStatement): # Done: implement another PC.py for EDSan
@@ -425,8 +433,10 @@ class KnowledgeBase:
         if use_graphoid:
             # assert self.Graphoid(
             #     incoming_ci) == True, f"Graphoid find inconsistency on {incoming_ci}"
-            if self.Graphoid(incoming_ci) == False:
+            # if self.Graphoid(incoming_ci) == False:
+            if self.EDsanGraphoidParallel(incoming_ci) == False:
                 raise EDsanAssertError("Graphoid", f"Graphoid find inconsistency on {incoming_ci}")
+
         if use_slicing:
             # assert self.EDSanSlicingParallel(
             #     incoming_ci), f"EDSanSlicing find inconsistency on {incoming_ci}"
