@@ -147,22 +147,23 @@ class ParallelGraphoidEDSanSolver:
         self.ci_statements = [fact.graphoid_expr(self.variables) for fact in self.new_facts if fact.ci]
         self.source_expr = psitip.alland(self.ci_statements)
         self.cd_terms = [fact.graphoid_term(self.variables) for fact in self.new_facts if not fact.ci]
-        self.manager= Manager()
 
     def check_consistency(self):
-        self.return_dict = self.manager.dict()
         pool = Pool(processes=48)
 
-        for _, cd_term in enumerate(self.cd_terms):
-            pool.apply_async(ParallelGraphoidEDSanSolver.worker, args=(cd_term, self.source_expr, self.return_dict))
+        results = pool.map(ParallelGraphoidEDSanSolver.worker_helper, [(cd_term, self.source_expr) for cd_term in self.cd_terms])
         pool.close()
         pool.join()
 
-        return True not in self.return_dict.values()
+        return True not in results
 
     @staticmethod
-    def worker(cd_term: psitip.Expr, source_expr: psitip.Region, return_dict):
-        return_dict[cd_term] = source_expr.get_bayesnet().check_ic(cd_term)
+    def worker(cd_term: psitip.Expr, source_expr: psitip.Region):
+        return source_expr.get_bayesnet().check_ic(cd_term)
+
+    @staticmethod
+    def worker_helper(args: Tuple[psitip.Expr, psitip.Region]):
+        return ParallelGraphoidEDSanSolver.worker(*args)
 
 class ParallelPSanFullSolver:
 
