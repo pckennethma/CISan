@@ -1,7 +1,7 @@
 from Rules import RuleContext
 from Utility import *
 from multiprocessing import Manager, Process
-from typing import List
+from typing import List, Tuple
 
 INCONSISTENT_KB = "INCONSISTENT_KB"
 class ParallelSlicingSolver:
@@ -78,7 +78,7 @@ class ParallelSlicingSolver:
         solver.set("timeout", timeout)
         return_dict[index] = solver.check()
 
-class ParaallelHybirdEDSanSolver:
+class ParallelHybridEDSanSolver:
     rule_set = ["symmetric_rule", "decomposition_rule", "weak_union_rule", 
                        "contraction_rule", "intersection_rule", "composition_rule",
                        "chordality_rule"]
@@ -91,23 +91,23 @@ class ParaallelHybirdEDSanSolver:
         self.full_timeout = full_timeout
         self.manager= Manager()
 
-    def check_consistency(self):
+    def check_consistency(self)->Tuple[bool, bool]:
         self.return_dict = self.manager.dict()
         jobs: List[Process] = []
 
-        fp = Process(target=ParallelSlicingSolver.worker, args=(idx, "full", self.var_num, self.ci_facts + [self.incoming_ci], self.full_timeout, self.return_dict))
+        fp = Process(target=ParallelHybridEDSanSolver.worker, args=(-1, "full", self.var_num, self.ci_facts + [self.incoming_ci], self.full_timeout, self.return_dict))
         fp.start()
 
-        for idx, rule_name in enumerate(ParallelSlicingSolver.rule_set):
-            p = Process(target=ParallelSlicingSolver.worker, args=(idx, rule_name, self.var_num, self.ci_facts + [self.incoming_ci], self.slicing_timeout, self.return_dict))
+        for idx, rule_name in enumerate(ParallelHybridEDSanSolver.rule_set):
+            p = Process(target=ParallelHybridEDSanSolver.worker, args=(idx, rule_name, self.var_num, self.ci_facts + [self.incoming_ci], self.slicing_timeout, self.return_dict))
             jobs.append(p)
             p.start()
         
         for proc in jobs:
             proc.join()
-        if unsat in self.return_dict.values(): return False
+        if unsat in self.return_dict.values(): return False, True
         fp.join()
-        return unsat not in self.return_dict.values()
+        return (unsat not in self.return_dict.values()), False
 
     @staticmethod
     def worker(index:int ,rule_name: str, var_num:int, ci_facts: List[CIStatement], timeout:int, return_dict):

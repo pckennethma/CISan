@@ -6,7 +6,7 @@ from itertools import chain
 from multiprocessing import Pool
 from Rules import RuleContext
 from Utility import *
-from ParallelSolver import ParallelSlicingSolver, ParallelPSanFullSolver, ParaallelHybirdEDSanSolver, INCONSISTENT_KB
+from ParallelSolver import ParallelSlicingSolver, ParallelPSanFullSolver, ParallelHybridEDSanSolver, INCONSISTENT_KB
 
 from datetime import datetime
 import functools
@@ -48,6 +48,9 @@ class KnowledgeBase:
         self.var_num = var_num
         self.do_track = do_trace
         self.backtrack_count = 0
+
+    def copy(self):
+        return KnowledgeBase(self.facts, self.var_num, self.do_track)
     
     def AddFact(self, fact: CIStatement):
         self.facts.append(fact)
@@ -56,13 +59,20 @@ class KnowledgeBase:
         self.facts += facts
 
     # Done: Add a function to randomly flip x% of the facts, (and return the flipped facts list)
-    def Perturb(self, ratio: float):
-        perturbed_facts = []
+    def Perturb(self, ratio: float, seed:int):
+        # perturbed_facts = []
+        random.seed(seed)
         select_index= random.sample(range(len(self.facts)), int(len(self.facts)*ratio))
         for ind in select_index:
             self.facts[ind].ci = not self.facts[ind].ci
-            perturbed_facts.append(self.facts[ind])
-        return perturbed_facts
+            # perturbed_facts.append(self.facts[ind])
+        return select_index
+    
+    def FlipOne(self, seed:int):
+        random.seed(seed)
+        ind = random.randint(0, len(self.facts)-2)
+        self.facts[ind].ci = not self.facts[ind].ci
+        return ind
 
     # def ConstructKB(self):
     #     converted_facts = []
@@ -386,8 +396,8 @@ class KnowledgeBase:
         return ps.check_consistency()
     
     @time_statistic
-    def EDSanHybirdParallel(self, incoming_ci: CIStatement):
-        ps = ParaallelHybirdEDSanSolver(self.var_num, self.facts, incoming_ci, self.compute_timeout("edsan_slicing"), self.compute_timeout("edsan_full"))
+    def EDSanHybridParallel(self, incoming_ci: CIStatement):
+        ps = ParallelHybridEDSanSolver(self.var_num, self.facts, incoming_ci, self.compute_timeout("edsan_slicing"), self.compute_timeout("edsan_full"))
         return ps.check_consistency()
 
     def EDSan(self, incoming_ci: CIStatement): # Done: implement another PC.py for EDSan
@@ -403,9 +413,9 @@ class KnowledgeBase:
         assert self.EDSanFull(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
 
     def EDSan_ablation(
-            self, incoming_ci: CIStatement, use_marginal: bool = True, use_graphoid: bool = True,
-            use_slicing: bool = True):
-        # assert self.degenerate_check(incoming_ci), "There has been a degenerate case!"
+            self, incoming_ci: CIStatement, use_marginal: bool = True, use_graphoid: bool = False,
+            use_slicing: bool = False):
+        print(f"Current Optimization: marginal={use_marginal}, graphoid={use_graphoid}, slicing={use_slicing}")
         if use_marginal:
             if self.marginal_omitting(incoming_ci):
                 global MARGINAL_COUNT
@@ -416,16 +426,33 @@ class KnowledgeBase:
             # assert self.Graphoid(
             #     incoming_ci) == True, f"Graphoid find inconsistency on {incoming_ci}"
             if self.Graphoid(incoming_ci) == False:
-                raise EDsanAssertError("Graphoid", "Graphoid find inconsistency on {incoming_ci}")
+                raise EDsanAssertError("Graphoid", f"Graphoid find inconsistency on {incoming_ci}")
         if use_slicing:
             # assert self.EDSanSlicingParallel(
             #     incoming_ci), f"EDSanSlicing find inconsistency on {incoming_ci}"
-            if self.EDSanHybirdParallel(incoming_ci) == False:
-                raise EDsanAssertError("EDSanSlicing", "EDSanSlicing find inconsistency on {incoming_ci}")
+            ret, if_slicing_find= self.EDSanHybridParallel(incoming_ci)
+            if ret == False:
+                if if_slicing_find:
+                    raise EDsanAssertError("EDSanSlicing", f"EDSanSlicing find inconsistency on {incoming_ci}")
+                else:
+                    raise EDsanAssertError("EDSanFull (with Slicing)", f"EDSanFull find inconsistency on {incoming_ci}")
         else:
             # assert self.EDSanFull(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
             if self.EDSanFull(incoming_ci) == False:
-                raise EDsanAssertError("EDSanFull", "EDSanFull find inconsistency on {incoming_ci}")
+                raise EDsanAssertError("EDSanFull", f"EDSanFull find inconsistency on {incoming_ci}")
+    
+    def EDsan_singleM(
+            self, incoming_ci: CIStatement, method_name:str):
+        if self.marginal_omitting(incoming_ci):
+            return
+        if method_name == "Graphoid":
+            assert self.Graphoid(
+                incoming_ci) == True, f"Graphoid find inconsistency on {incoming_ci}"
+        elif method_name == "Slicing":
+            assert self.EDSanSlicingParallel(
+                incoming_ci), f"EDSanSlicing find inconsistency on {incoming_ci}"
+        else:
+            raise ValueError("method_name should be either Graphoid or Slicing")
     
     @time_statistic
     def Backtracking(self):

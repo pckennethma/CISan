@@ -4,7 +4,7 @@ from DataUtils import read_table
 from GraphUtils import *
 from Utility import CIStatement
 import IndependenceSolver
-from IndependenceSolver import KnowledgeBase, FUNCTION_TIME_DICT, EDsanAssertError, MARGINAL_COUNT
+from IndependenceSolver import KnowledgeBase, FUNCTION_TIME_DICT, EDsanAssertError
 import numpy as np
 import pandas as pd
 import json
@@ -84,7 +84,6 @@ def EDsan_pc_skl(var_num, independence_func, enable_solver=True, use_marginal=Tr
 def run_error_injection_oracle_pc(
         benchmark, error_rate=0.1, seed: int = 0, use_marginal=True, use_graphoid=True,
         use_slicing=True):
-    global MARGINAL_COUNT
     dag_path = f"/home/zjiae/Data/benchmarks/{benchmark}_graph.txt"
     dag = read_dag(dag_path)
     oracle = ErrorInjectionOracleCI(dag=dag, error_rate=error_rate, seed=seed)
@@ -102,8 +101,8 @@ def run_error_injection_oracle_pc(
         method_name = e.method_name
         print(f"Error Detected: {e}")
         print("======================================")
-    marginal_count = MARGINAL_COUNT
-    MARGINAL_COUNT = 0
+    marginal_count = IndependenceSolver.MARGINAL_COUNT
+    IndependenceSolver.MARGINAL_COUNT = 0
     return error_detected, method_name, oracle.error_num, oracle.ci_invoke_count, oracle.error_injection_position, marginal_count
 
 
