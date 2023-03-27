@@ -110,7 +110,7 @@ if __name__ == "__main__":
                         default="sachs")
     parser.add_argument("--use_marginal", "-um", action="store_true")
     parser.add_argument("--use_graphoid", "-ug", action="store_true")
-    parser.add_argument("--use_slicing", "-us", action="store_false")
+    parser.add_argument("--use_slicing", "-us", action="store_true")
     parser.add_argument("--error-ratio", "-r", type=float, default=0.01)
     args = parser.parse_args()
     print(args)

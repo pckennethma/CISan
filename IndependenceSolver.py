@@ -449,7 +449,7 @@ class KnowledgeBase:
                 if if_slicing_find:
                     raise EDsanAssertError("EDSanSlicing", f"EDSanSlicing find inconsistency on {incoming_ci}")
                 else:
-                    raise EDsanAssertError("EDSanFull (with Slicing)", f"EDSanFull find inconsistency on {incoming_ci}")
+                    raise EDsanAssertError("EDSanFull (with Slicing)", f"EDSanFull (with Slicing) find inconsistency on {incoming_ci}")
         else:
             # assert self.EDSanFull(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
             if self.EDSanFull(incoming_ci) == False:
