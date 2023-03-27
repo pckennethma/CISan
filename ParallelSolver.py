@@ -82,6 +82,8 @@ class ParallelHybridEDSanSolver:
     rule_set = ["symmetric_rule", "decomposition_rule", "weak_union_rule", 
                        "contraction_rule", "intersection_rule", "composition_rule",
                        "chordality_rule"]
+    
+    dump_unsat_core = False
 
     def __init__(self, var_num: int, ci_facts: List[CIStatement], incoming_ci: CIStatement, slicing_timeout:int, full_timeout:int):
         self.var_num = var_num
@@ -112,19 +114,28 @@ class ParallelHybridEDSanSolver:
     @staticmethod
     def worker(index:int ,rule_name: str, var_num:int, ci_facts: List[CIStatement], timeout:int, return_dict):
         solver = SolverFor("QF_UFBV")
+        if ParallelHybridEDSanSolver.dump_unsat_core:
+            solver.set(unsat_core=True)
         ci_euf = Function("ci_euf", BitVecSort(var_num), BitVecSort(var_num), BitVecSort(var_num), BitVecSort(2))
         rule_ctx = RuleContext(var_num, ci_euf)
         if rule_name == "full":
             for rule in rule_ctx.constraints.items(): 
-                solver.add(rule[1])
+                if ParallelHybridEDSanSolver.dump_unsat_core:
+                    solver.assert_and_track(rule[1], rule[0])
+                else:
+                    solver.add(rule[1])
         else:
             solver.add(rule_ctx.constraints["initial_validity_condition"])
             solver.add(rule_ctx.constraints[rule_name])
         for ci in ci_facts:
             if rule_name == "full" or ci_facts[-1].has_overlap(ci):
-                solver.add(ci.generate_constraint(ci_euf, var_num))
+                if ParallelHybridEDSanSolver.dump_unsat_core and rule_name == "full":
+                    solver.assert_and_track(ci.generate_constraint(ci_euf, var_num), str(ci))
+                else: solver.add(ci.generate_constraint(ci_euf, var_num))
         solver.set("timeout", timeout)
         return_dict[index] = solver.check()
+        if ParallelHybridEDSanSolver.dump_unsat_core and solver.unsat_core() != []:
+            print("Unsat core:", solver.unsat_core())
 
 class ParallelGraphoidEDSanSolver:
 
