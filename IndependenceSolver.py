@@ -7,7 +7,7 @@ from multiprocessing import Pool
 from Rules import RuleContext
 from Utility import *
 from ParallelSolver import ParallelSlicingSolver, ParallelPSanFullSolver, ParallelHybridEDSanSolver, INCONSISTENT_KB, ParallelGraphoidEDSanSolver
-
+from copy import deepcopy
 from datetime import datetime
 import functools
 FUNCTION_TIME_DICT = {}
@@ -50,7 +50,7 @@ class KnowledgeBase:
         self.backtrack_count = 0
 
     def copy(self):
-        return KnowledgeBase(self.facts, self.var_num, self.do_track)
+        return KnowledgeBase(deepcopy(self.facts), self.var_num, self.do_track)
     
     def AddFact(self, fact: CIStatement):
         self.facts.append(fact)
@@ -69,14 +69,58 @@ class KnowledgeBase:
         return select_index
     
     def FlipOne(self, seed:int):
+        # Set the random seed to ensure reproducibility
         random.seed(seed)
-        ind = random.randint(0, len(self.facts)-2)
-        self.facts[ind].ci = not self.facts[ind].ci
-        for idx, fact in enumerate(self.facts):
-            if idx != ind:
-                if fact.is_form_equal(self.facts[ind]):
-                    self.facts[idx].ci = self.facts[ind].ci
-        return ind
+        
+        # Generate a random 32-bit integer
+        random_int = random.randint(0, 0xffffffff)
+        
+        # Randomly choose which type of constraint to flip
+        which_to_flip = random.randint(0, 1)
+        
+        if which_to_flip == 0:
+            # If flipping a CD constraint, choose a random index from the list of CD constraints
+            cd_idx = [idx for idx, fact in enumerate(self.facts) if not fact.ci]
+            flip_idx = cd_idx[random_int % len(cd_idx)]
+        else:
+            # If flipping a CI constraint, choose a random index from the list of CI constraints
+            ci_idx = [idx for idx, fact in enumerate(self.facts) if fact.ci]
+            flip_idx = ci_idx[random_int % len(ci_idx)]
+        
+        # Flip the constraint at the selected index
+        print("Flip", flip_idx, self.facts[flip_idx])
+        self.facts[flip_idx].ci = not self.facts[flip_idx].ci
+        
+        # Return the index of the flipped constraint
+        return flip_idx
+
+    def FlipSome(self, seed:int, size:int=10, handle_symmetric=True):
+        # Set the random seed to ensure reproducibility
+        random.seed(seed)
+        
+        # Generate a random 32-bit integer
+        flip_idx_list = [random.randint(0, 0xffffffff) % len(self.facts) for _ in range(size)]
+        # random_int = random.randint(0, 0xffffffff)
+        # # Randomly choose which type of constraint to flip
+        # which_to_flip = random.randint(0, 1)
+        
+        # if which_to_flip == 0:
+        #     # If flipping a CD constraint, choose a random index from the list of CD constraints
+        #     cd_idx = [idx for idx, fact in enumerate(self.facts) if not fact.ci]
+        #     flip_idx_list = [cd_idx[(random_int+offset) % len(cd_idx)] for offset in range(size)]
+        # else:
+        #     # If flipping a CI constraint, choose a random index from the list of CI constraints
+        #     ci_idx = [idx for idx, fact in enumerate(self.facts) if fact.ci]
+        #     flip_idx_list = [ci_idx[(random_int+offset) % len(ci_idx)] for offset in range(size)]
+        
+        # Flip the constraint at the selected index
+        print("Flip", "\t".join([str(self.facts[idx]) for idx in flip_idx_list]))
+        for idx in flip_idx_list:
+            self.facts[idx].ci = not self.facts[idx].ci
+            if handle_symmetric:
+                for idx2 in range(len(self.facts)):
+                    if idx2 != idx and self.facts[idx].is_form_equal(self.facts[idx2]):
+                        self.facts[idx2].ci = self.facts[idx].ci 
 
     # def ConstructKB(self):
     #     converted_facts = []
@@ -450,7 +494,7 @@ class KnowledgeBase:
                     raise EDsanAssertError("EDSanSlicing", f"EDSanSlicing find inconsistency on {incoming_ci}")
                 else:
                     raise EDsanAssertError("EDSanFull (with Slicing)", f"EDSanFull (with Slicing) find inconsistency on {incoming_ci}")
-        else:
+        if not use_marginal and not use_graphoid and not use_slicing:
             # assert self.EDSanFull(incoming_ci), f"EDSanFull find inconsistency on {incoming_ci}"
             if self.EDSanFull(incoming_ci) == False:
                 raise EDsanAssertError("EDSanFull", f"EDSanFull find inconsistency on {incoming_ci}")
@@ -638,7 +682,7 @@ class KnowledgeBase:
             return int(max(30_000, 1000 * self.var_num * 2))
         elif check_type == "edsan_slicing":
             # return int(max(20_000, 1000 * self.var_num * 1.5))
-            return int(max(10_000, 1000 * self.var_num ))
+            return int(max(25_000, 1000 * self.var_num ))
     
 
 

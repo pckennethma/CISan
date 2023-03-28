@@ -53,18 +53,6 @@ class ParallelSlicingSolver:
                     return self.incoming_ci
         return None
     
-    # def check_consistency(self, ):
-    #     self.return_dict = self.manager.dict()
-    #     jobs: List[Process] = []
-    #     for idx, rule_name in enumerate(ParallelSlicingSolver.rule_set):
-    #         p1 = Process(target=ParallelSlicingSolver.worker, args=(idx+1, rule_name, self.var_num, self.ci_facts + [self.incoming_ci], self.timeout, self.return_dict))
-    #         jobs.append(p1)
-    #         p1.start()
-    #     for proc in jobs:
-    #         proc.join()
-
-    #     return not any(map(lambda x: x == unsat, self.return_dict.values()))
-    
 
     @staticmethod
     def worker(index:int ,rule_name: str, var_num:int, ci_facts: List[CIStatement], timeout:int, return_dict):
@@ -79,9 +67,7 @@ class ParallelSlicingSolver:
         return_dict[index] = solver.check()
 
 class ParallelHybridEDSanSolver:
-    rule_set = ["symmetric_rule", "decomposition_rule", "weak_union_rule", 
-                       "contraction_rule", "intersection_rule", "composition_rule",
-                       "chordality_rule"]
+    rule_set = ["symmetric_rule", "decomposition_rule", "weak_union_rule",  "contraction_rule", "intersection_rule", "composition_rule", "chordality_rule", "full"]
     
     dump_unsat_core = True
 
@@ -91,28 +77,19 @@ class ParallelHybridEDSanSolver:
         self.incoming_ci = incoming_ci
         self.slicing_timeout = slicing_timeout
         self.full_timeout = full_timeout
-        self.manager= Manager()
 
     def check_consistency(self)->Tuple[bool, bool]:
-        self.return_dict = self.manager.dict()
-        jobs: List[Process] = []
 
-        fp = Process(target=ParallelHybridEDSanSolver.worker, args=(-1, "full", self.var_num, self.ci_facts + [self.incoming_ci], self.full_timeout, self.return_dict))
-        fp.start()
+        pool = Pool(processes=48)
 
-        for idx, rule_name in enumerate(ParallelHybridEDSanSolver.rule_set):
-            p = Process(target=ParallelHybridEDSanSolver.worker, args=(idx, rule_name, self.var_num, self.ci_facts + [self.incoming_ci], self.slicing_timeout, self.return_dict))
-            jobs.append(p)
-            p.start()
-        
-        for proc in jobs:
-            proc.join()
-        if unsat in self.return_dict.values(): return False, True
-        fp.join()
-        return (unsat not in self.return_dict.values()), False
+        for i in pool.imap_unordered(ParallelHybridEDSanSolver.worker_helper, [(rule, self.var_num, self.ci_facts + [self.incoming_ci], self.full_timeout if rule == "full" else self.slicing_timeout) for rule in ParallelHybridEDSanSolver.rule_set], chunksize=1):
+            if i[1] == unsat:
+                pool.terminate()
+                return False, i[0] != "full"
+        return True, False
 
     @staticmethod
-    def worker(index:int ,rule_name: str, var_num:int, ci_facts: List[CIStatement], timeout:int, return_dict):
+    def worker(rule_name: str, var_num:int, ci_facts: List[CIStatement], timeout:int):
         solver = SolverFor("QF_UFBV")
         if ParallelHybridEDSanSolver.dump_unsat_core:
             solver.set(unsat_core=True)
@@ -125,17 +102,27 @@ class ParallelHybridEDSanSolver:
                 else:
                     solver.add(rule[1])
         else:
-            solver.add(rule_ctx.constraints["initial_validity_condition"])
-            solver.add(rule_ctx.constraints[rule_name])
+            if ParallelHybridEDSanSolver.dump_unsat_core:
+                    solver.assert_and_track(rule_ctx.constraints[rule_name], rule_name)
+                    solver.add(rule_ctx.constraints["initial_validity_condition"])
+            else:
+                solver.add(rule_ctx.constraints[rule_name])
+                solver.add(rule_ctx.constraints["initial_validity_condition"])
+                
         for ci in ci_facts:
             if rule_name == "full" or ci_facts[-1].has_overlap(ci):
                 if ParallelHybridEDSanSolver.dump_unsat_core and rule_name == "full":
                     solver.assert_and_track(ci.generate_constraint(ci_euf, var_num), str(ci))
                 else: solver.add(ci.generate_constraint(ci_euf, var_num))
         solver.set("timeout", timeout)
-        return_dict[index] = solver.check()
-        if ParallelHybridEDSanSolver.dump_unsat_core and solver.unsat_core() != []:
+        rlt = solver.check()
+        if ParallelHybridEDSanSolver.dump_unsat_core and len(solver.unsat_core()) != 0:
             print("Unsat core:", solver.unsat_core())
+        return rule_name, rlt
+    
+    @staticmethod
+    def worker_helper(args: Tuple[str, int, List[CIStatement], int]):
+        return ParallelHybridEDSanSolver.worker(*args)
 
 class ParallelGraphoidEDSanSolver:
 
@@ -149,20 +136,23 @@ class ParallelGraphoidEDSanSolver:
         self.cd_terms = [fact.graphoid_term(self.variables) for fact in self.new_facts if not fact.ci]
 
     def check_consistency(self):
-        pool = Pool(processes=48)
-
-        results = pool.map(ParallelGraphoidEDSanSolver.worker_helper, [(cd_term, self.source_expr) for cd_term in self.cd_terms])
-        pool.close()
-        pool.join()
-
-        return True not in results
+        # pool = Pool(processes=48)
+        source_bn = self.source_expr.get_bayesnet()
+        # for i in pool.imap_unordered(ParallelGraphoidEDSanSolver.worker_helper, [(cd_term, source_bn) for cd_term in self.cd_terms], chunksize=1):
+        #     if i:
+        #         pool.terminate()
+        #         return False
+        for input_term in [(cd_term, source_bn) for cd_term in self.cd_terms]:
+            if ParallelGraphoidEDSanSolver.worker_helper(input_term):
+                return False
+        return True
 
     @staticmethod
-    def worker(cd_term: psitip.Expr, source_expr: psitip.Region):
-        return source_expr.get_bayesnet().check_ic(cd_term)
+    def worker(cd_term: psitip.Expr, source_bn: psitip.BayesNet):
+        return source_bn.check_ic(cd_term)
 
     @staticmethod
-    def worker_helper(args: Tuple[psitip.Expr, psitip.Region]):
+    def worker_helper(args: Tuple[psitip.Expr, psitip.BayesNet]):
         return ParallelGraphoidEDSanSolver.worker(*args)
 
 class ParallelPSanFullSolver:

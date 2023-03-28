@@ -87,7 +87,7 @@ def run_detection(kb: KnowledgeBase, error_rate: float, seed: int,
                   use_marginal=True, use_graphoid=True, use_slicing=True):
     start_time = datetime.now()
     # kb.Perturb(error_rate, seed)
-    kb.FlipOne(seed)
+    kb.FlipSome(seed, int(len(kb.facts) * 0.03))
     last_ci = kb.facts.pop()
     error_detected = False
     method_name = None
@@ -119,6 +119,7 @@ if __name__ == "__main__":
 
     method_list = []
     time_list = []
+    detected_idx = []
     start_time = datetime.now()
     detected_num = 0
     total_num = 100
@@ -130,10 +131,12 @@ if __name__ == "__main__":
     print("SHD", compare_skeleton(est, dag))
     print("Start detection")
     for seed in range(total_num):
+        if detected_num == 100: break
         error_detected, method_name, last_time = run_detection(
             kb.copy(), args.error_ratio, seed, args.use_marginal, args.use_graphoid, args.use_slicing)
         if error_detected:
             detected_num += 1
+            detected_idx.append(seed)
             method_list.append(method_name)
             time_list.append(last_time)
     end_time = datetime.now()
@@ -144,5 +147,6 @@ if __name__ == "__main__":
     print(f"Time standard deviation: {statistics.stdev(time_list)}")
     print(f"Detected {detected_num} out of {total_num} errors")
     print("Method list", method_list)
+    print("Detected index", detected_idx)
     # for key, val in FUNCTION_TIME_DICT.items():
     #     print(f"Function: {key}, Total time: {val[0]}, Total count: {val[1]}")
