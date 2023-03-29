@@ -137,6 +137,8 @@ class ParallelGraphoidEDSanSolver:
 
     def check_consistency(self):
         # pool = Pool(processes=48)
+        # all CI statements are dependent in this case; no need to check
+        if self.source_expr is None: return True
         source_bn = self.source_expr.get_bayesnet()
         # for i in pool.imap_unordered(ParallelGraphoidEDSanSolver.worker_helper, [(cd_term, source_bn) for cd_term in self.cd_terms], chunksize=1):
         #     if i:
