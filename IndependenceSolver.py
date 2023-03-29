@@ -679,7 +679,7 @@ class KnowledgeBase:
             # return int(max(20_000, 1000 * len(self.facts)))
             return int(max(10_000, 1000 * self.var_num ))
         elif check_type == "edsan_full":
-            return int(max(30_000, 1000 * self.var_num * 2))
+            return int(max(120_000, 1000 * self.var_num * 2))
         elif check_type == "edsan_slicing":
             # return int(max(20_000, 1000 * self.var_num * 1.5))
             return int(max(25_000, 1000 * self.var_num ))
