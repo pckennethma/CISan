@@ -87,7 +87,8 @@ def run_detection(kb: KnowledgeBase, error_rate: float, seed: int,
                   use_marginal=True, use_graphoid=True, use_slicing=True):
     start_time = datetime.now()
     # kb.Perturb(error_rate, seed)
-    kb.FlipSome(seed, int(len(kb.facts) * 0.03))
+    # kb.FlipSome(seed, int(len(kb.facts) * 0.03)) # for sachs
+    kb.FlipSome(seed, int(len(kb.facts) * 0.1)) # for survey
     last_ci = kb.facts.pop()
     error_detected = False
     method_name = None

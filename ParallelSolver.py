@@ -115,7 +115,10 @@ class ParallelHybridEDSanSolver:
                     solver.assert_and_track(ci.generate_constraint(ci_euf, var_num), str(ci))
                 else: solver.add(ci.generate_constraint(ci_euf, var_num))
         solver.set("timeout", timeout)
-        rlt = solver.check()
+        try:
+            rlt = solver.check()
+        except Z3Exception:
+            rlt = unknown
         if ParallelHybridEDSanSolver.dump_unsat_core and len(solver.unsat_core()) != 0:
             print("Unsat core:", solver.unsat_core())
         return rule_name, rlt
