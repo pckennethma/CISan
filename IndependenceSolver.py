@@ -470,8 +470,9 @@ class KnowledgeBase:
 
     def EDSan_ablation(
             self, incoming_ci: CIStatement, use_marginal: bool = True, use_graphoid: bool = False,
-            use_slicing: bool = False):
-        print(f"Current Optimization: marginal={use_marginal}, graphoid={use_graphoid}, slicing={use_slicing}")
+            use_slicing: bool = False, verbose:bool=True):
+        if verbose:
+            print(f"Current Optimization: marginal={use_marginal}, graphoid={use_graphoid}, slicing={use_slicing}")
         if use_marginal:
             if self.marginal_omitting(incoming_ci):
                 global MARGINAL_COUNT

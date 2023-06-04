@@ -249,7 +249,7 @@ def run_oracle_pc(benchmark):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--benchmarks", "-b", type=str,
-                        choices=["earthquake", "survey", "cancer", "sachs"],
+                        choices=["earthquake", "survey", "cancer", "sachs", "insurance"],
                         default="earthquake")
     parser.add_argument("--function", "-f", type=str,
                         choices=["dpkt", "chisq", "oracle"],
@@ -258,10 +258,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     start_time = datetime.now()
-    # it seems that Z3 have some bug on asia
-    # benchmarks = ["earthquake", "survey", "cancer", "sachs",]
-    # benchmarks = ["earthquake"]
+    
     benchmarks = [args.benchmarks]
+    print(args)
     print("=========================================")
     print(f"Benchmarks: {benchmarks}")
 

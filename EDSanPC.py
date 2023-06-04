@@ -34,7 +34,7 @@ def EDsan_pc_skl(var_num, independence_func, enable_solver=True, use_marginal=Tr
         TOTAL_CI += 1
         is_ind = independence_func(node_x, node_y, set())
         ci = CIStatement.createByXYZ(node_x, node_y, set(), is_ind)
-        kb.EDSan_ablation(ci, use_marginal, use_graphoid, use_slicing)
+        kb.EDSan_ablation(ci, use_marginal, use_graphoid, use_slicing, False)
         kb.AddFact(ci)
         if is_ind:
             graph[node_x].remove(node_y)
@@ -60,7 +60,7 @@ def EDsan_pc_skl(var_num, independence_func, enable_solver=True, use_marginal=Tr
                         x, y, z = list(ci.x)[0], list(ci.y)[0], ci.z
                         is_ind = independence_func(x, y, z)
                         incoming_ci = CIStatement.createByXYZ(x, y, z, is_ind)
-                        kb.EDSan_ablation(incoming_ci, use_marginal, use_graphoid, use_slicing)
+                        kb.EDSan_ablation(incoming_ci, use_marginal, use_graphoid, use_slicing, False)
                         kb.AddFact(incoming_ci)
                         print("CI Query", str(incoming_ci))
                         if is_ind:
@@ -109,12 +109,13 @@ def run_error_injection_oracle_pc(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--benchmarks", "-b", type=str,
-                        choices=["earthquake", "survey", "cancer", "sachs"],
+                        choices=["earthquake", "survey", "cancer", "sachs", "alarm", "insurance"],
                         default="sachs")
     parser.add_argument("--use_marginal", "-um", action="store_true")
     parser.add_argument("--use_graphoid", "-ug", action="store_true")
     parser.add_argument("--use_slicing", "-us", action="store_true")
     parser.add_argument("--error_ratio", "-r", type=float, default=0.05)
+    parser.add_argument("--rq1", "-rq1", action="store_true")
     args = parser.parse_args()
     print(args)
 
@@ -134,8 +135,13 @@ if __name__ == "__main__":
         start_time = datetime.now()
         dag_path = f"/home/zjiae/Data/benchmarks/{benchmark}_graph.txt"
         dag = read_dag(dag_path)
-        error_detected, method_name, error_count, ci_count, error_injection_position, marginal_count = run_error_injection_oracle_pc(
-            benchmark, args.error_ratio, seed, args.use_marginal, args.use_graphoid, args.use_slicing)
+        if args.rq1:
+            error_ratio = (seed + 1) / 100
+            error_detected, method_name, error_count, ci_count, error_injection_position, marginal_count = run_error_injection_oracle_pc(
+                benchmark, error_ratio, seed, args.use_marginal, args.use_graphoid, args.use_slicing)
+        else:
+            error_detected, method_name, error_count, ci_count, error_injection_position, marginal_count = run_error_injection_oracle_pc(
+                benchmark, args.error_ratio, seed, args.use_marginal, args.use_graphoid, args.use_slicing)
 
         result["method_name"].append(method_name)
         result["marginal_count"].append(marginal_count)

@@ -5,6 +5,9 @@ from typing import List, Tuple
 
 INCONSISTENT_KB = "INCONSISTENT_KB"
 class ParallelSlicingSolver:
+    """
+    A class to solve the problem of checking consistency and pruning in parallel by applying different rules.
+    """
 
     rule_set = ["symmetric_rule", "decomposition_rule", "weak_union_rule", 
                        "contraction_rule", "intersection_rule", "composition_rule",
