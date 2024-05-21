@@ -16,13 +16,10 @@
 </p>
 <hr>
 
----
-
 ## 📍 Overview
 
 Welcome to the repository for CISan, a suite of tools and utilities designed for runtime verification of causal discovery algorithms through automated conditional independence reasoning. This repository contains the Python implementation and dataset resources necessary for conducting experiments and validating the performance of various causal discovery algorithms.
 
----
 
 ## 📂 Repository Structure
 
@@ -50,7 +47,6 @@ Welcome to the repository for CISan, a suite of tools and utilities designed for
         └── survey-10k.csv
 ```
 
----
 
 ## 🧩 Modules
 
@@ -70,7 +66,6 @@ Welcome to the repository for CISan, a suite of tools and utilities designed for
 | [PC.py](https://github.com/pckennethma/CISan/blob/master/PC.py)                                 | Implementation of the PC algorithm for causal discovery.                                   |
 
 
----
 
 ## 🚀 Getting Started
 
