@@ -116,15 +116,12 @@ We welcome contributions from the community. If you have any suggestions, bug re
 If you find this repository useful in your research, please cite our paper:
 
 ```bibtex
-@inproceedings{ma2024cicheck,
+@inproceedings{ma2024enabling,
   title={Enabling Runtime Verification of Causal Discovery Algorithms with Automated Conditional Independence Reasoning},
   author={Ma, Pingchuan and Ji, Zhenlan and Yao, Peisen and Wang, Shuai and Ren, Kui},
-  booktitle={Proceedings of the 2024 IEEE/ACM 46th International Conference on Software Engineering (ICSE '24)},
-  year={2024},
-  organization={IEEE/ACM},
-  pages={TBD},
-  doi={10.1145/3597503.3623348},
-  publisher={ACM}
+  booktitle={Proceedings of the 46th IEEE/ACM International Conference on Software Engineering},
+  pages={1--13},
+  year={2024}
 }
 ```
 
