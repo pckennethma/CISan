@@ -9,7 +9,7 @@
 	<img src="https://img.shields.io/github/languages/count/pckennethma/CISan?style=flat&color=0080ff" alt="repo-language-count">
 <p>
 <p align="center">
-		<em>This is a research artifact for paper "CISan: Sanitizing Causal Discovery Algorithms with Automated Conditional Independence Reasoning" (ICSE 2024).</em>
+		<em>This is a research artifact for paper "Enabling Runtime Verification of Causal Discovery Algorithms with Automated Conditional Independence Reasoning" (ICSE 2024).</em>
 </p>
 <p align="center">
 	<img src="https://img.shields.io/badge/Python-3776AB.svg?style=flat&logo=Python&logoColor=white" alt="Python">
