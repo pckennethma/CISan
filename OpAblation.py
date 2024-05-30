@@ -124,7 +124,7 @@ if __name__ == "__main__":
     start_time = datetime.now()
     detected_num = 0
     total_num = 100
-    dag_path = f"/home/zjiae/Data/benchmarks/{args.benchmark}_graph.txt"
+    dag_path = f"./benchmarks/{args.benchmark}_graph.txt"
     dag = read_dag(dag_path)
     oracle = OracleCI(dag=dag)
     est, total_ci, kb = EDsan_pc_skl(dag.get_num_nodes(), oracle.oracle_ci, enable_solver=False)

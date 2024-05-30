@@ -206,7 +206,7 @@ def Psan_pc_skl(var_num, independence_func, enable_solver=True):
 
 @logme
 def run_dpkt_pc(benchmark):
-    dag_path = f"/home/zjiae/Data/benchmarks/{benchmark}_graph.txt"
+    dag_path = f"./benchmarks/{benchmark}_graph.txt"
     data_path = f"data/{benchmark}-10k.csv"
     dag=read_dag(dag_path)
     dpkt = DPKendalTau(read_table(data_path), dag=dag)
@@ -217,7 +217,7 @@ def run_dpkt_pc(benchmark):
 def run_dpkt_pc_repeat(benchmark):
     with Pool() as pool:
         result = pool.map(run_dpkt_pc, [benchmark]*10)
-    dag_path = f"/home/zjiae/Data/benchmarks/{benchmark}_graph.txt"
+    dag_path = f"./benchmarks/{benchmark}_graph.txt"
     dag=read_dag(dag_path)
     avg_shd = np.mean([compare_skeleton(rlt[0], dag) for rlt in result])
     avg_total_ci = np.mean([rlt[1] for rlt in result])
@@ -228,7 +228,7 @@ def run_dpkt_pc_repeat(benchmark):
 
 @logme
 def run_chisq_pc(benchmark):
-    dag_path = f"/home/zjiae/Data/benchmarks/{benchmark}_graph.txt"
+    dag_path = f"./benchmarks/{benchmark}_graph.txt"
     data_path = f"data/{benchmark}-10k.csv"
     dag=read_dag(dag_path)
     chisq = Chisq(read_table(data_path), dag=dag)
@@ -238,7 +238,7 @@ def run_chisq_pc(benchmark):
 
 @logme
 def run_oracle_pc(benchmark):
-    dag_path = f"/home/zjiae/Data/benchmarks/{benchmark}_graph.txt"
+    dag_path = f"./benchmarks/{benchmark}_graph.txt"
     dag=read_dag(dag_path)
     oracle = OracleCI(dag=dag)
     # est, TOTAL_CI = pc_skl(dag.get_num_nodes(), oracle.oracle_ci, True)
@@ -270,7 +270,7 @@ if __name__ == "__main__":
 
     for benchmark in benchmarks:
 
-        dag_path = f"/home/zjiae/Data/benchmarks/{benchmark}_graph.txt"
+        dag_path = f"./benchmarks/{benchmark}_graph.txt"
         dag=read_dag(dag_path)
         # dag = read_dag(dag_path)
         # REACHABLE = {}

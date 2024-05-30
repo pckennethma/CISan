@@ -84,7 +84,7 @@ def EDsan_pc_skl(var_num, independence_func, enable_solver=True, use_marginal=Tr
 def run_error_injection_oracle_pc(
         benchmark, error_rate=0.1, seed: int = 0, use_marginal=True, use_graphoid=True,
         use_slicing=True):
-    dag_path = f"/home/zjiae/Data/benchmarks/{benchmark}_graph.txt"
+    dag_path = f"./benchmarks/{benchmark}_graph.txt"
     dag = read_dag(dag_path)
     oracle = ErrorInjectionOracleCI(dag=dag, error_rate=error_rate, seed=seed)
     error_detected = False
@@ -133,7 +133,7 @@ if __name__ == "__main__":
         "args": f"{args}"}
     for seed in range(10):
         start_time = datetime.now()
-        dag_path = f"/home/zjiae/Data/benchmarks/{benchmark}_graph.txt"
+        dag_path = f"./benchmark/{benchmark}_graph.txt"
         dag = read_dag(dag_path)
         if args.rq1:
             error_ratio = (seed + 1) / 100
@@ -166,7 +166,7 @@ if __name__ == "__main__":
     #     print("=========================================")
     #     print(f"Benchmark: {benchmark}, Error rate: {error_rate}")
     #     start_time = datetime.now()
-    #     dag_path = f"/home/zjiae/Data/benchmarks/{benchmark}_graph.txt"
+    #     dag_path = f"./benchmark/{benchmark}_graph.txt"
     #     dag=read_dag(dag_path)
     #     error_detected, error_count, ci_count, error_injection_position = run_error_injection_oracle_pc(benchmark, error_rate)
     #
